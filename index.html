@@ -89,48 +89,84 @@
         <span class="topbar-titulo">Pedidos de Obra</span>
         <span class="topbar-sub">SKY TERRA</span>
       </div>
-      <div class="topbar-usuario">
-        <div class="usuario-datos">
-          <span class="usuario-nombre" id="usuario-nombre"></span>
-          <span class="usuario-rol" id="usuario-rol"></span>
-        </div>
+      <div class="topbar-derecha">
+        <button class="btn-campana" id="btn-campana" aria-label="Notificaciones">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+          </svg>
+          <span class="campana-badge oculto" id="campana-badge">0</span>
+        </button>
         <button class="btn btn-ghost btn-chico" id="btn-salir">Salir</button>
       </div>
     </header>
 
     <main class="contenido">
 
-      <!-- ------------------------- VISTA: LISTA -------------------------- -->
-      <section class="vista" id="vista-lista">
+      <!-- ----------------------- VISTA: DASHBOARD ------------------------ -->
+      <section class="vista" id="vista-dashboard">
+        <div class="filtros-fila filtros-dashboard">
+          <select class="input input-chico" id="dash-obra"></select>
+          <select class="input input-chico" id="dash-rubro"></select>
+        </div>
+        <div id="dash-contenido"><!-- por JS --></div>
+      </section>
+
+      <!-- ------------------------ VISTA: LISTADO ------------------------- -->
+      <section class="vista oculto" id="vista-listado">
         <div class="filtros">
           <div class="chips" id="chips-estado"><!-- por JS --></div>
           <div class="filtros-fila">
-            <select class="input input-chico filtro-obra" id="filtro-obra"><!-- por JS --></select>
-            <label class="toggle-mios oculto" id="wrap-mios">
-              <input type="checkbox" id="check-mios" />
-              <span>Solo los míos</span>
-            </label>
-            <button class="btn btn-ghost btn-chico oculto" id="btn-ver-obras">Obras</button>
+            <select class="input input-chico" id="filtro-obra"></select>
+            <select class="input input-chico" id="filtro-rubro"></select>
+            <select class="input input-chico" id="filtro-prioridad">
+              <option value="todas">Prioridad: todas</option>
+              <option value="normal">Normal</option>
+              <option value="urgente">Urgente</option>
+            </select>
+          </div>
+          <div class="filtros-fila">
+            <label class="filtro-fecha"><span>Desde</span>
+              <input class="input input-chico" type="date" id="filtro-desde" /></label>
+            <label class="filtro-fecha"><span>Hasta</span>
+              <input class="input input-chico" type="date" id="filtro-hasta" /></label>
+            <button class="btn btn-ghost btn-chico" id="btn-exportar">Exportar</button>
+          </div>
+          <div class="filtros-fila">
+            <input class="input buscador" type="search" id="buscador"
+              placeholder="Buscar por material, número, obra o proveedor…" />
           </div>
         </div>
 
         <ul class="lista-pedidos" id="lista-pedidos"><!-- por JS --></ul>
-
-        <button class="btn-flotante" id="btn-nuevo-pedido">+ Nuevo pedido</button>
       </section>
 
       <!-- ---------------------- VISTA: NUEVO PEDIDO ---------------------- -->
       <section class="vista oculto" id="vista-nuevo">
         <div class="vista-encabezado">
           <button class="btn-volver" id="nuevo-volver">‹ Volver</button>
-          <h2>Nuevo pedido</h2>
+          <h2 id="nuevo-titulo">Nuevo pedido</h2>
         </div>
 
         <form id="form-pedido" novalidate>
           <label class="campo">
             <span>Obra</span>
-            <select class="input" id="pedido-obra" required><!-- por JS --></select>
+            <select class="input" id="pedido-obra" required></select>
           </label>
+
+          <label class="campo">
+            <span>Rubro (un pedido = un rubro; si necesitás de dos rubros, hacé dos pedidos)</span>
+            <select class="input" id="pedido-rubro" required></select>
+          </label>
+
+          <div class="campo">
+            <span class="campo-titulo">Prioridad</span>
+            <div class="segmentado" id="seg-prioridad">
+              <button type="button" class="seg-btn activo" data-valor="normal">Normal</button>
+              <button type="button" class="seg-btn" data-valor="urgente">Urgente</button>
+            </div>
+          </div>
 
           <label class="campo">
             <span>Se necesita para el</span>
@@ -149,16 +185,12 @@
               placeholder="Aclaraciones para administración: marca, medida, dónde entregar…"></textarea>
           </label>
 
-          <div class="campo">
-            <span class="campo-titulo">Fotos (opcional)</span>
-            <p class="nota-suave">Plano, croquis o el material que hay que reponer.</p>
-            <div class="fotos-previa" id="fotos-previa"><!-- por JS --></div>
-            <button type="button" class="btn btn-ghost btn-bloque" id="btn-agregar-foto">+ Agregar foto</button>
-            <input type="file" id="input-foto-nuevo" accept="image/*" multiple class="oculto" />
-          </div>
-
           <p class="form-error oculto" id="pedido-error"></p>
-          <button type="submit" class="btn btn-primario btn-bloque" id="btn-guardar-pedido">Enviar pedido</button>
+          <p class="nota-suave" id="pedido-autosave">Lo que cargás se guarda solo en este dispositivo hasta que lo envíes.</p>
+          <div class="acciones-doble">
+            <button type="button" class="btn btn-ghost" id="btn-guardar-borrador">Guardar borrador</button>
+            <button type="submit" class="btn btn-primario" id="btn-enviar-pedido">Enviar pedido</button>
+          </div>
         </form>
 
         <datalist id="lista-unidades"><!-- por JS --></datalist>
@@ -171,56 +203,103 @@
           <h2 id="detalle-titulo">Pedido</h2>
         </div>
         <div id="detalle-contenido"><!-- por JS --></div>
-        <input type="file" id="input-foto-detalle" accept="image/*" class="oculto" />
       </section>
 
-      <!-- ------------------------- VISTA: OBRAS --------------------------- -->
-      <section class="vista oculto" id="vista-obras">
-        <div class="vista-encabezado">
-          <button class="btn-volver" id="obras-volver">‹ Volver</button>
-          <h2>Obras</h2>
+      <!-- ------------------------ VISTA: GESTION -------------------------- -->
+      <section class="vista oculto" id="vista-gestion">
+        <h2 class="gestion-titulo">Gestión</h2>
+        <div class="tabs" id="tabs-gestion">
+          <button class="tab activo" data-tab="obras">Obras</button>
+          <button class="tab" data-tab="rubros">Rubros</button>
+          <button class="tab" data-tab="proveedores">Proveedores</button>
+          <button class="tab" data-tab="usuarios">Usuarios</button>
         </div>
+        <div id="gestion-contenido"><!-- por JS --></div>
+      </section>
 
-        <p class="nota-suave">Los códigos siguen el formato BARRIO-LOTE, por ejemplo
-          <strong>MOL-1047</strong> o <strong>CAR-233</strong>.</p>
+      <!-- ------------------------- VISTA: PERFIL -------------------------- -->
+      <section class="vista oculto" id="vista-perfil">
+        <h2 class="gestion-titulo">Mi perfil</h2>
+        <form id="form-perfil" novalidate>
+          <label class="campo">
+            <span>Nombre y apellido</span>
+            <input class="input" type="text" id="perfil-nombre" required />
+          </label>
+          <label class="campo">
+            <span>Email</span>
+            <input class="input" type="email" id="perfil-email" disabled />
+          </label>
+          <label class="campo">
+            <span>WhatsApp (con código de país, ej: 5491122334455)</span>
+            <input class="input" type="tel" id="perfil-whatsapp" inputmode="numeric"
+              placeholder="549..." />
+          </label>
 
-        <form class="form-obra" id="form-obra" novalidate>
-          <div class="form-obra-fila">
-            <input class="input" type="text" id="obra-codigo" placeholder="MOL-1047"
-              autocapitalize="characters" required />
-            <input class="input" type="text" id="obra-nombre" placeholder="Nombre / referencia" required />
+          <div class="campo">
+            <span class="campo-titulo">Avisos por WhatsApp</span>
+            <p class="nota-suave">Qué eventos querés que te lleguen al WhatsApp
+              (la campana de la app avisa siempre).</p>
+            <label class="check-fila"><input type="checkbox" id="aviso-pedido_nuevo" />
+              <span>Pedido nuevo enviado</span></label>
+            <label class="check-fila"><input type="checkbox" id="aviso-recibido" />
+              <span>Pedido recibido por administración</span></label>
+            <label class="check-fila"><input type="checkbox" id="aviso-pedido_proveedor" />
+              <span>Pedido al proveedor</span></label>
+            <label class="check-fila"><input type="checkbox" id="aviso-recepcion" />
+              <span>Recepción registrada en obra</span></label>
           </div>
-          <p class="form-error oculto" id="obra-error"></p>
-          <button type="submit" class="btn btn-primario btn-bloque" id="btn-guardar-obra">Agregar obra</button>
-        </form>
 
-        <ul class="lista-obras" id="lista-obras"><!-- por JS --></ul>
+          <p class="form-error oculto" id="perfil-error"></p>
+          <button type="submit" class="btn btn-primario btn-bloque" id="btn-guardar-perfil">Guardar perfil</button>
+        </form>
+        <p class="nota-suave perfil-rol" id="perfil-rol"></p>
       </section>
 
     </main>
+
+    <!-- Botón flotante (dashboard y listado, roles director/admin) -->
+    <button class="btn-flotante oculto" id="btn-nuevo-pedido">+ Nuevo pedido</button>
+
+    <!-- Barra de navegación inferior -->
+    <nav class="navbar" id="navbar">
+      <button class="nav-item activo" data-vista="dashboard">Inicio</button>
+      <button class="nav-item" data-vista="listado">Pedidos</button>
+      <button class="nav-item oculto" data-vista="gestion" id="nav-gestion">Gestión</button>
+      <button class="nav-item" data-vista="perfil">Perfil</button>
+    </nav>
   </div>
 
-  <!-- ===================== MODAL: PASAR A COMPRA (admin) =================== -->
-  <div class="modal oculto" id="modal-compra">
+  <!-- ==================== MODAL: PEDIR AL PROVEEDOR (admin) ================ -->
+  <div class="modal oculto" id="modal-proveedor">
     <div class="modal-caja">
-      <h3>Pasar a compra</h3>
-      <p class="nota-suave" id="compra-subtitulo"></p>
+      <h3>Pedido al proveedor</h3>
+      <p class="nota-suave" id="proveedor-subtitulo"></p>
       <label class="campo">
         <span>Proveedor</span>
-        <input class="input" type="text" id="compra-proveedor" required />
+        <input class="input" type="text" id="prov-nombre" list="lista-proveedores"
+          placeholder="Elegí de la lista o escribí uno nuevo" />
+        <datalist id="lista-proveedores"><!-- por JS --></datalist>
+      </label>
+      <label class="check-fila oculto" id="prov-guardar-wrap">
+        <input type="checkbox" id="prov-guardar" checked />
+        <span>Guardar como proveedor nuevo</span>
       </label>
       <label class="campo">
-        <span>Orden de compra (opcional)</span>
-        <input class="input" type="text" id="compra-oc" />
+        <span>Fecha estimada de entrega</span>
+        <input class="input" type="date" id="prov-fecha" />
       </label>
       <label class="campo">
-        <span>Fecha estimada de entrega (opcional)</span>
-        <input class="input" type="date" id="compra-fecha" />
+        <span>Nro de orden de compra (opcional)</span>
+        <input class="input" type="text" id="prov-oc" />
       </label>
-      <p class="form-error oculto" id="compra-error"></p>
+      <label class="campo">
+        <span>Observaciones (opcional)</span>
+        <textarea class="input" id="prov-obs" rows="2"></textarea>
+      </label>
+      <p class="form-error oculto" id="proveedor-error"></p>
       <div class="modal-acciones">
-        <button class="btn btn-ghost" id="compra-cancelar">Cancelar</button>
-        <button class="btn btn-primario" id="compra-confirmar">Confirmar</button>
+        <button class="btn btn-ghost" id="proveedor-cancelar">Cancelar</button>
+        <button class="btn btn-primario" id="proveedor-confirmar">Confirmar</button>
       </div>
     </div>
   </div>
@@ -229,8 +308,20 @@
   <div class="modal oculto" id="modal-recepcion">
     <div class="modal-caja">
       <h3>Registrar recepción</h3>
-      <p class="nota-suave">Cargá lo que llegó ahora a la obra, ítem por ítem.</p>
+      <p class="nota-suave">Cargá lo que llegó ahora a la obra, ítem por ítem.
+        Puede haber varias recepciones parciales.</p>
       <div class="recepcion-items" id="recepcion-items"><!-- por JS --></div>
+      <label class="campo">
+        <span>Nota (opcional)</span>
+        <input class="input" type="text" id="recepcion-nota"
+          placeholder="Ej: llegó con el remito 0001-00023456" />
+      </label>
+      <div class="campo">
+        <span class="campo-titulo">Fotos del remito</span>
+        <div class="fotos-previa" id="recepcion-fotos-previa"><!-- por JS --></div>
+        <button type="button" class="btn btn-ghost btn-bloque" id="btn-recepcion-foto">+ Agregar foto o PDF</button>
+        <input type="file" id="input-foto-recepcion" accept="image/*,application/pdf" multiple class="oculto" />
+      </div>
       <p class="form-error oculto" id="recepcion-error"></p>
       <div class="modal-acciones">
         <button class="btn btn-ghost" id="recepcion-cancelar">Cancelar</button>
@@ -244,7 +335,7 @@
     <div class="modal-caja">
       <h3>Cancelar pedido</h3>
       <label class="campo">
-        <span>Motivo</span>
+        <span>Motivo (obligatorio)</span>
         <textarea class="input" id="cancelar-nota" rows="3"
           placeholder="Por qué se cancela (queda en el historial)"></textarea>
       </label>
@@ -259,8 +350,22 @@
   <!-- ========================== MODAL: VER FOTO ============================ -->
   <div class="modal oculto" id="modal-foto">
     <div class="modal-foto-caja" id="modal-foto-caja">
-      <img id="modal-foto-img" alt="Foto del pedido" />
+      <img id="modal-foto-img" alt="Foto de remito" />
       <p class="modal-foto-pie" id="modal-foto-pie"></p>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: NOTIFICACIONES (campana) ================= -->
+  <div class="modal oculto" id="modal-notificaciones">
+    <div class="modal-caja">
+      <div class="notif-cabecera">
+        <h3>Notificaciones</h3>
+        <button class="btn btn-ghost btn-chico" id="btn-todas-leidas">Marcar todas leídas</button>
+      </div>
+      <ul class="lista-notif" id="lista-notif"><!-- por JS --></ul>
+      <div class="modal-acciones">
+        <button class="btn btn-ghost" id="notif-cerrar">Cerrar</button>
+      </div>
     </div>
   </div>
 
@@ -280,6 +385,8 @@
   <!-- Núcleo de la app (el orden importa) -->
   <script src="js/firebase.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/seed.js"></script>
   <script src="js/app.js"></script>
 
   <!-- Registro del Service Worker (PWA / offline). Ruta relativa: la app

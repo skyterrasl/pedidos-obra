@@ -12,7 +12,7 @@
    ¿Cambiaste archivos y no ves la novedad? Subí la versión (v1 → v2).
    ============================================================================ */
 
-const CACHE = "pedidos-obra-v1";
+const CACHE = "pedidos-obra-v2";
 
 const APP_SHELL = [
   "./",
@@ -23,6 +23,8 @@ const APP_SHELL = [
   "./js/firebase-config.js",
   "./js/firebase.js",
   "./js/store.js",
+  "./js/export.js",
+  "./js/seed.js",
   "./js/app.js",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png"

@@ -4,14 +4,17 @@ rules_version = '2';
 // PEDIDOS DE OBRA · SKY TERRA — Reglas de seguridad de Firestore
 // Pegar en: console.firebase.google.com → Firestore Database → Reglas → Publicar
 //
+// Estas reglas se aplican EN EL SERVIDOR de Firebase: aunque alguien
+// modifique la app en su navegador, no puede saltearlas.
+//
 // Resumen:
-// - Nadie sin login puede leer ni escribir nada.
-// - usuarios/{uid}: cada uno crea SOLO su propio perfil al registrarse y no
-//   puede cambiarse el rol después.
-// - obras: las leen todos, las escribe solo administración.
-// - pedidos: los leen todos; solo administración puede poner estado "en_compra";
-//   el resto de transiciones (recepción, cancelación) las puede hacer cualquiera
-//   de los dos roles desde la app.
+// - Sin login no se lee ni se escribe nada. Usuario desactivado: no escribe.
+// - control: SOLO lectura (no puede escribir nada, en ninguna colección).
+// - director: crea pedidos solo en SUS obras asignadas; edita/borra solo sus
+//   borradores; registra recepciones en pedidos de sus obras; cancela solo
+//   sus propios pedidos. No puede poner "recibido" ni "pedido_proveedor".
+// - admin: gestiona obras, rubros, proveedores y usuarios; hace todas las
+//   transiciones. Nadie (ni el admin) cambia su PROPIO rol o activo.
 // ============================================================================
 
 service cloud.firestore {
@@ -21,60 +24,131 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function rolUsuario() {
-      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol;
+    function miPerfil() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
     }
 
+    // Activo y con rol que escribe (control queda afuera de TODA escritura)
     function esAdmin() {
-      return logueado() && rolUsuario() == 'admin';
+      return logueado() && miPerfil().rol == 'admin' && miPerfil().activo == true;
+    }
+
+    function esDirector() {
+      return logueado() && miPerfil().rol == 'director' && miPerfil().activo == true;
+    }
+
+    function asignadoAObra(obraId) {
+      return request.auth.uid in
+        get(/databases/$(database)/documents/obras/$(obraId)).data.directores;
     }
 
     // ---------------------------------------------------------------- usuarios
     match /usuarios/{uid} {
       allow read: if logueado();
-      // Solo el dueño crea su perfil, y con un rol válido.
+
+      // Cada uno crea SOLO su perfil al registrarse, con rol válido y activo.
       allow create: if logueado()
         && request.auth.uid == uid
-        && request.resource.data.rol in ['obra', 'admin'];
-      // Puede retocar su perfil pero NUNCA cambiarse el rol.
-      allow update: if logueado()
-        && request.auth.uid == uid
-        && request.resource.data.rol == resource.data.rol;
+        && request.resource.data.rol in ['director', 'admin', 'control']
+        && request.resource.data.activo == true;
+
+      // El dueño edita su perfil (nombre, whatsapp, avisos) pero NUNCA su
+      // propio rol ni su propio activo. El admin edita a los demás.
+      allow update: if
+        (logueado()
+          && request.auth.uid == uid
+          && request.resource.data.rol == resource.data.rol
+          && request.resource.data.activo == resource.data.activo)
+        || (esAdmin() && request.auth.uid != uid);
+
       allow delete: if false;
+
+      // Notificaciones in-app (campana)
+      match /notificaciones/{nid} {
+        // Solo el dueño lee su campana.
+        allow read: if logueado() && request.auth.uid == uid;
+        // Cualquier usuario activo que escribe (admin/director) puede
+        // notificar a otro. Control no.
+        allow create: if esAdmin() || esDirector();
+        // Solo el dueño marca leída / limpia.
+        allow update, delete: if logueado() && request.auth.uid == uid;
+      }
     }
 
     // ------------------------------------------------------------------- obras
     match /obras/{obraId} {
       allow read: if logueado();
       allow create, update: if esAdmin();
-      allow delete: if false; // se archivan (activa: false), no se borran
+      allow delete: if false; // se finalizan/pausan, no se borran (historial)
+    }
+
+    // ------------------------------------------------------------------ rubros
+    match /rubros/{rubroId} {
+      allow read: if logueado();
+      allow write: if esAdmin();
+    }
+
+    // ------------------------------------------------------------- proveedores
+    match /proveedores/{provId} {
+      allow read: if logueado();
+      allow write: if esAdmin();
     }
 
     // ------------------------------------------------- contador de numeración
     match /contadores/{contadorId} {
-      allow read, write: if logueado();
+      allow read: if logueado();
+      allow write: if esAdmin() || esDirector();
     }
 
     // ----------------------------------------------------------------- pedidos
     match /pedidos/{pedidoId} {
       allow read: if logueado();
 
-      // Un pedido nace siempre "solicitado" y a nombre de quien lo crea.
-      allow create: if logueado()
-        && request.resource.data.estado == 'solicitado'
-        && request.resource.data.solicitanteUid == request.auth.uid;
+      // Nace como borrador o enviado. El director, solo en sus obras y a su
+      // nombre; el admin puede crear en cualquier obra (incluye el seed).
+      allow create: if
+        request.resource.data.estado in ['borrador', 'enviado']
+        && (esAdmin()
+            || (esDirector()
+                && request.resource.data.solicitanteUid == request.auth.uid
+                && asignadoAObra(request.resource.data.obraId)));
 
-      // Solo administración puede poner el estado "en_compra".
-      // Las demás transiciones (entrega_parcial, entregado, cancelado)
-      // las puede escribir cualquier usuario logueado.
+      // Transiciones:
+      // - admin: todas.
+      // - director: (a) editar/enviar SU borrador, (b) recepciones en obras
+      //   asignadas (resultado entrega_parcial/entregado), (c) cancelar SU
+      //   pedido. Nunca puede poner 'recibido' ni 'pedido_proveedor'.
       allow update: if esAdmin()
-        || (logueado() && request.resource.data.estado != 'en_compra');
+        || (esDirector() && (
+             (resource.data.estado == 'borrador'
+               && resource.data.solicitanteUid == request.auth.uid
+               && request.resource.data.estado in ['borrador', 'enviado'])
+          || (request.resource.data.estado in ['entrega_parcial', 'entregado']
+               && resource.data.estado in ['pedido_proveedor', 'entrega_parcial']
+               && asignadoAObra(resource.data.obraId))
+          || (request.resource.data.estado == 'cancelado'
+               && resource.data.solicitanteUid == request.auth.uid)
+        ));
 
-      allow delete: if false;
+      // Solo se borran borradores, y solo su dueño (o admin).
+      allow delete: if resource.data.estado == 'borrador'
+        && (esAdmin() || resource.data.solicitanteUid == request.auth.uid);
 
-      // Fotos: se agregan, no se editan ni se borran.
+      // ------------------------------------------------------------ recepciones
+      match /recepciones/{recId} {
+        allow read: if logueado();
+        allow create: if esAdmin()
+          || (esDirector()
+              && asignadoAObra(get(/databases/$(database)/documents/pedidos/$(pedidoId)).data.obraId));
+        allow update, delete: if false; // las recepciones no se editan
+      }
+
+      // ------------------------------------------------- fotos de remito
       match /fotos/{fotoId} {
-        allow read, create: if logueado();
+        allow read: if logueado();
+        allow create: if esAdmin()
+          || (esDirector()
+              && asignadoAObra(get(/databases/$(database)/documents/pedidos/$(pedidoId)).data.obraId));
         allow update, delete: if false;
       }
     }
