@@ -1,0 +1,16 @@
+{
+  "name": "Pedidos de Obra · Sky Terra",
+  "short_name": "Pedidos Obra",
+  "description": "Seguimiento de pedidos de materiales de obra de Sky Terra: solicitud, compra y entrega.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f5f3",
+  "theme_color": "#0e4f48",
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

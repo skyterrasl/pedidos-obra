@@ -1,0 +1,6 @@
+# Capturas de verificación local (no son parte de la app)
+_capturas/
+
+# Sistema
+Thumbs.db
+.DS_Store

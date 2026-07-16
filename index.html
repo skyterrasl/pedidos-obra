@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0e4f48" />
+  <title>Pedidos de Obra · Sky Terra</title>
+
+  <!-- PWA: permite "agregar a la pantalla de inicio" -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+  <link rel="icon" type="image/png" href="assets/icons/icon-192.png" />
+
+  <link rel="stylesheet" href="css/estilos.css" />
+</head>
+<body>
+
+  <!-- ================= PANTALLA: FALTA CONFIGURAR FIREBASE ================= -->
+  <section class="pantalla oculto" id="pantalla-config">
+    <div class="tarjeta-centrada">
+      <div class="logo-mini">PO</div>
+      <h1>Falta configurar Firebase</h1>
+      <p>La app está lista, pero todavía no está conectada a la base de datos ni al login.</p>
+      <ol class="pasos-config">
+        <li>Entrá a <strong>console.firebase.google.com</strong> y creá un proyecto.</li>
+        <li>Activá <strong>Authentication</strong> (correo y contraseña) y <strong>Firestore</strong>.</li>
+        <li>Copiá el bloque <code>firebaseConfig</code> de tu proyecto y pegalo en
+          <code>js/firebase-config.js</code> (donde dice <code>REEMPLAZAR</code>).</li>
+        <li>Pegá el contenido de <code>firestore.rules</code> en Firestore → Reglas.</li>
+      </ol>
+      <p class="nota-suave">El <strong>README.md</strong> del proyecto tiene el paso a paso completo.</p>
+    </div>
+  </section>
+
+  <!-- ======================= PANTALLA: LOGIN / REGISTRO ==================== -->
+  <section class="pantalla oculto" id="pantalla-auth">
+    <div class="tarjeta-centrada tarjeta-auth">
+      <div class="auth-marca">
+        <div class="logo-mini">PO</div>
+        <h1>Pedidos de Obra</h1>
+        <span class="auth-sub">SKY TERRA</span>
+      </div>
+
+      <!-- Login -->
+      <form id="form-login" novalidate>
+        <label class="campo">
+          <span>Email</span>
+          <input class="input" type="email" id="login-email" autocomplete="email" required />
+        </label>
+        <label class="campo">
+          <span>Contraseña</span>
+          <input class="input" type="password" id="login-pass" autocomplete="current-password" required />
+        </label>
+        <p class="form-error oculto" id="login-error"></p>
+        <button type="submit" class="btn btn-primario btn-bloque" id="btn-login">Ingresar</button>
+        <p class="auth-alternativa">¿No tenés cuenta? <a href="#" id="ir-registro">Crear cuenta</a></p>
+      </form>
+
+      <!-- Registro -->
+      <form id="form-registro" class="oculto" novalidate>
+        <label class="campo">
+          <span>Nombre y apellido</span>
+          <input class="input" type="text" id="reg-nombre" autocomplete="name" required />
+        </label>
+        <label class="campo">
+          <span>Email</span>
+          <input class="input" type="email" id="reg-email" autocomplete="email" required />
+        </label>
+        <label class="campo">
+          <span>Contraseña (mínimo 6 caracteres)</span>
+          <input class="input" type="password" id="reg-pass" autocomplete="new-password" required />
+        </label>
+        <label class="campo">
+          <span>Código de invitación</span>
+          <input class="input" type="text" id="reg-codigo" autocapitalize="characters" autocomplete="off" required />
+        </label>
+        <p class="form-error oculto" id="registro-error"></p>
+        <button type="submit" class="btn btn-primario btn-bloque" id="btn-registro">Crear cuenta</button>
+        <p class="auth-alternativa">¿Ya tenés cuenta? <a href="#" id="ir-login">Ingresar</a></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============================ PANTALLA: APP ============================ -->
+  <div class="oculto" id="pantalla-app">
+
+    <header class="topbar">
+      <div class="topbar-marca">
+        <span class="topbar-titulo">Pedidos de Obra</span>
+        <span class="topbar-sub">SKY TERRA</span>
+      </div>
+      <div class="topbar-usuario">
+        <div class="usuario-datos">
+          <span class="usuario-nombre" id="usuario-nombre"></span>
+          <span class="usuario-rol" id="usuario-rol"></span>
+        </div>
+        <button class="btn btn-ghost btn-chico" id="btn-salir">Salir</button>
+      </div>
+    </header>
+
+    <main class="contenido">
+
+      <!-- ------------------------- VISTA: LISTA -------------------------- -->
+      <section class="vista" id="vista-lista">
+        <div class="filtros">
+          <div class="chips" id="chips-estado"><!-- por JS --></div>
+          <div class="filtros-fila">
+            <select class="input input-chico filtro-obra" id="filtro-obra"><!-- por JS --></select>
+            <label class="toggle-mios oculto" id="wrap-mios">
+              <input type="checkbox" id="check-mios" />
+              <span>Solo los míos</span>
+            </label>
+            <button class="btn btn-ghost btn-chico oculto" id="btn-ver-obras">Obras</button>
+          </div>
+        </div>
+
+        <ul class="lista-pedidos" id="lista-pedidos"><!-- por JS --></ul>
+
+        <button class="btn-flotante" id="btn-nuevo-pedido">+ Nuevo pedido</button>
+      </section>
+
+      <!-- ---------------------- VISTA: NUEVO PEDIDO ---------------------- -->
+      <section class="vista oculto" id="vista-nuevo">
+        <div class="vista-encabezado">
+          <button class="btn-volver" id="nuevo-volver">‹ Volver</button>
+          <h2>Nuevo pedido</h2>
+        </div>
+
+        <form id="form-pedido" novalidate>
+          <label class="campo">
+            <span>Obra</span>
+            <select class="input" id="pedido-obra" required><!-- por JS --></select>
+          </label>
+
+          <label class="campo">
+            <span>Se necesita para el</span>
+            <input class="input" type="date" id="pedido-fecha" required />
+          </label>
+
+          <div class="campo">
+            <span class="campo-titulo">Materiales</span>
+            <div class="items-editor" id="items-editor"><!-- por JS --></div>
+            <button type="button" class="btn btn-ghost btn-bloque" id="btn-agregar-item">+ Agregar material</button>
+          </div>
+
+          <label class="campo">
+            <span>Observaciones (opcional)</span>
+            <textarea class="input" id="pedido-obs" rows="3"
+              placeholder="Aclaraciones para administración: marca, medida, dónde entregar…"></textarea>
+          </label>
+
+          <div class="campo">
+            <span class="campo-titulo">Fotos (opcional)</span>
+            <p class="nota-suave">Plano, croquis o el material que hay que reponer.</p>
+            <div class="fotos-previa" id="fotos-previa"><!-- por JS --></div>
+            <button type="button" class="btn btn-ghost btn-bloque" id="btn-agregar-foto">+ Agregar foto</button>
+            <input type="file" id="input-foto-nuevo" accept="image/*" multiple class="oculto" />
+          </div>
+
+          <p class="form-error oculto" id="pedido-error"></p>
+          <button type="submit" class="btn btn-primario btn-bloque" id="btn-guardar-pedido">Enviar pedido</button>
+        </form>
+
+        <datalist id="lista-unidades"><!-- por JS --></datalist>
+      </section>
+
+      <!-- ------------------------ VISTA: DETALLE -------------------------- -->
+      <section class="vista oculto" id="vista-detalle">
+        <div class="vista-encabezado">
+          <button class="btn-volver" id="detalle-volver">‹ Volver</button>
+          <h2 id="detalle-titulo">Pedido</h2>
+        </div>
+        <div id="detalle-contenido"><!-- por JS --></div>
+        <input type="file" id="input-foto-detalle" accept="image/*" class="oculto" />
+      </section>
+
+      <!-- ------------------------- VISTA: OBRAS --------------------------- -->
+      <section class="vista oculto" id="vista-obras">
+        <div class="vista-encabezado">
+          <button class="btn-volver" id="obras-volver">‹ Volver</button>
+          <h2>Obras</h2>
+        </div>
+
+        <p class="nota-suave">Los códigos siguen el formato BARRIO-LOTE, por ejemplo
+          <strong>MOL-1047</strong> o <strong>CAR-233</strong>.</p>
+
+        <form class="form-obra" id="form-obra" novalidate>
+          <div class="form-obra-fila">
+            <input class="input" type="text" id="obra-codigo" placeholder="MOL-1047"
+              autocapitalize="characters" required />
+            <input class="input" type="text" id="obra-nombre" placeholder="Nombre / referencia" required />
+          </div>
+          <p class="form-error oculto" id="obra-error"></p>
+          <button type="submit" class="btn btn-primario btn-bloque" id="btn-guardar-obra">Agregar obra</button>
+        </form>
+
+        <ul class="lista-obras" id="lista-obras"><!-- por JS --></ul>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ===================== MODAL: PASAR A COMPRA (admin) =================== -->
+  <div class="modal oculto" id="modal-compra">
+    <div class="modal-caja">
+      <h3>Pasar a compra</h3>
+      <p class="nota-suave" id="compra-subtitulo"></p>
+      <label class="campo">
+        <span>Proveedor</span>
+        <input class="input" type="text" id="compra-proveedor" required />
+      </label>
+      <label class="campo">
+        <span>Orden de compra (opcional)</span>
+        <input class="input" type="text" id="compra-oc" />
+      </label>
+      <label class="campo">
+        <span>Fecha estimada de entrega (opcional)</span>
+        <input class="input" type="date" id="compra-fecha" />
+      </label>
+      <p class="form-error oculto" id="compra-error"></p>
+      <div class="modal-acciones">
+        <button class="btn btn-ghost" id="compra-cancelar">Cancelar</button>
+        <button class="btn btn-primario" id="compra-confirmar">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= MODAL: REGISTRAR RECEPCION ==================== -->
+  <div class="modal oculto" id="modal-recepcion">
+    <div class="modal-caja">
+      <h3>Registrar recepción</h3>
+      <p class="nota-suave">Cargá lo que llegó ahora a la obra, ítem por ítem.</p>
+      <div class="recepcion-items" id="recepcion-items"><!-- por JS --></div>
+      <p class="form-error oculto" id="recepcion-error"></p>
+      <div class="modal-acciones">
+        <button class="btn btn-ghost" id="recepcion-cancelar">Cancelar</button>
+        <button class="btn btn-primario" id="recepcion-confirmar">Guardar recepción</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================= MODAL: CANCELAR PEDIDO ====================== -->
+  <div class="modal oculto" id="modal-cancelar">
+    <div class="modal-caja">
+      <h3>Cancelar pedido</h3>
+      <label class="campo">
+        <span>Motivo</span>
+        <textarea class="input" id="cancelar-nota" rows="3"
+          placeholder="Por qué se cancela (queda en el historial)"></textarea>
+      </label>
+      <p class="form-error oculto" id="cancelar-error"></p>
+      <div class="modal-acciones">
+        <button class="btn btn-ghost" id="cancelar-cerrar">Volver</button>
+        <button class="btn btn-peligro" id="cancelar-confirmar">Cancelar pedido</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================== MODAL: VER FOTO ============================ -->
+  <div class="modal oculto" id="modal-foto">
+    <div class="modal-foto-caja" id="modal-foto-caja">
+      <img id="modal-foto-img" alt="Foto del pedido" />
+      <p class="modal-foto-pie" id="modal-foto-pie"></p>
+    </div>
+  </div>
+
+  <!-- Toast de avisos -->
+  <div class="toast oculto" id="toast"></div>
+
+  <!-- ============================== SCRIPTS ================================ -->
+  <!-- Firebase (SDK "compat": expone la variable global `firebase`) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <!-- Configuración editable -->
+  <script src="js/config.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <!-- Núcleo de la app (el orden importa) -->
+  <script src="js/firebase.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- Registro del Service Worker (PWA / offline). Ruta relativa: la app
+       funciona igual en un subpath tipo /pedidos-obra/ de GitHub Pages. -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () =>
+        navigator.serviceWorker.register("service-worker.js").catch(() => {})
+      );
+    }
+  </script>
+</body>
+</html>

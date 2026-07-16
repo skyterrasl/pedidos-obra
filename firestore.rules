@@ -1,0 +1,82 @@
+rules_version = '2';
+
+// ============================================================================
+// PEDIDOS DE OBRA · SKY TERRA — Reglas de seguridad de Firestore
+// Pegar en: console.firebase.google.com → Firestore Database → Reglas → Publicar
+//
+// Resumen:
+// - Nadie sin login puede leer ni escribir nada.
+// - usuarios/{uid}: cada uno crea SOLO su propio perfil al registrarse y no
+//   puede cambiarse el rol después.
+// - obras: las leen todos, las escribe solo administración.
+// - pedidos: los leen todos; solo administración puede poner estado "en_compra";
+//   el resto de transiciones (recepción, cancelación) las puede hacer cualquiera
+//   de los dos roles desde la app.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function logueado() {
+      return request.auth != null;
+    }
+
+    function rolUsuario() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol;
+    }
+
+    function esAdmin() {
+      return logueado() && rolUsuario() == 'admin';
+    }
+
+    // ---------------------------------------------------------------- usuarios
+    match /usuarios/{uid} {
+      allow read: if logueado();
+      // Solo el dueño crea su perfil, y con un rol válido.
+      allow create: if logueado()
+        && request.auth.uid == uid
+        && request.resource.data.rol in ['obra', 'admin'];
+      // Puede retocar su perfil pero NUNCA cambiarse el rol.
+      allow update: if logueado()
+        && request.auth.uid == uid
+        && request.resource.data.rol == resource.data.rol;
+      allow delete: if false;
+    }
+
+    // ------------------------------------------------------------------- obras
+    match /obras/{obraId} {
+      allow read: if logueado();
+      allow create, update: if esAdmin();
+      allow delete: if false; // se archivan (activa: false), no se borran
+    }
+
+    // ------------------------------------------------- contador de numeración
+    match /contadores/{contadorId} {
+      allow read, write: if logueado();
+    }
+
+    // ----------------------------------------------------------------- pedidos
+    match /pedidos/{pedidoId} {
+      allow read: if logueado();
+
+      // Un pedido nace siempre "solicitado" y a nombre de quien lo crea.
+      allow create: if logueado()
+        && request.resource.data.estado == 'solicitado'
+        && request.resource.data.solicitanteUid == request.auth.uid;
+
+      // Solo administración puede poner el estado "en_compra".
+      // Las demás transiciones (entrega_parcial, entregado, cancelado)
+      // las puede escribir cualquier usuario logueado.
+      allow update: if esAdmin()
+        || (logueado() && request.resource.data.estado != 'en_compra');
+
+      allow delete: if false;
+
+      // Fotos: se agregan, no se editan ni se borran.
+      match /fotos/{fotoId} {
+        allow read, create: if logueado();
+        allow update, delete: if false;
+      }
+    }
+  }
+}
