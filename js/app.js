@@ -672,7 +672,7 @@ window.PO = window.PO || {};
       return;
     }
 
-    $("detalle-titulo").textContent = p.numero;
+    $("detalle-titulo").textContent = "Pedido"; // el número va en la cabecera de abajo
     const u = estado.usuario;
     const esAdmin = u.rol === "admin";
     const abiertoEstado = ["solicitado", "en_compra", "entrega_parcial"].includes(p.estado);
