@@ -16,10 +16,10 @@
    ============================================================================ */
 
 window.FIREBASE_CONFIG = {
-  apiKey: "REEMPLAZAR-apiKey",
-  authDomain: "REEMPLAZAR-authDomain",
-  projectId: "REEMPLAZAR-projectId",
-  storageBucket: "REEMPLAZAR-storageBucket",
-  messagingSenderId: "REEMPLAZAR-messagingSenderId",
-  appId: "REEMPLAZAR-appId"
+  apiKey: "AIzaSyDLEH4cV07RRkqUvRRyrTY_-l0BUrbv30I",
+  authDomain: "pedidos-obra-skyterra.firebaseapp.com",
+  projectId: "pedidos-obra-skyterra",
+  storageBucket: "pedidos-obra-skyterra.firebasestorage.app",
+  messagingSenderId: "675988642628",
+  appId: "1:675988642628:web:f6acd7f93fdfbe1b8f9511"
 };
