@@ -1,0 +1,93 @@
+{
+  "name": "Pedidos de Obra - Alerta diaria de atrasados",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 8 * * 1-6" }] }
+      },
+      "id": "cron-diario",
+      "name": "Todos los dias 8:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyDLEH4cV07RRkqUvRRyrTY_-l0BUrbv30I",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ email: 'PEGAR_EMAIL_BOT', password: 'PEGAR_PASSWORD_BOT', returnSecureToken: true }) }}",
+        "options": {}
+      },
+      "id": "login-bot",
+      "name": "Login bot Firebase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://firestore.googleapis.com/v1/projects/pedidos-obra-skyterra/databases/(default)/documents:runQuery",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $json.idToken }}" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ structuredQuery: { from: [{ collectionId: 'pedidos' }], where: { fieldFilter: { field: { fieldPath: 'estado' }, op: 'IN', value: { arrayValue: { values: [{ stringValue: 'pedido_proveedor' }, { stringValue: 'entrega_parcial' }] } } } }, limit: 200 } }) }}",
+        "options": {}
+      },
+      "id": "query-pedidos",
+      "name": "Buscar pedidos abiertos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Filtra los vencidos (fechaEstimada < hoy) y arma un resumen por WhatsApp\n// para los numeros de ADMIN_WHATSAPP (editar abajo).\nconst ADMIN_WHATSAPP = ['PEGAR_NUMERO_ADMIN'];\nconst hoy = new Date().toISOString().slice(0, 10);\nconst atrasados = [];\nfor (const item of $input.all()) {\n  const doc = item.json.document;\n  if (!doc) continue;\n  const f = doc.fields || {};\n  const fecha = f.proveedor && f.proveedor.mapValue && f.proveedor.mapValue.fields && f.proveedor.mapValue.fields.fechaEstimada ? f.proveedor.mapValue.fields.fechaEstimada.stringValue : null;\n  if (fecha && fecha < hoy) {\n    atrasados.push(`\\u2022 *${f.numero ? f.numero.stringValue : '?'}* ${f.obraNombre ? f.obraNombre.stringValue : ''} \\u2014 estimado ${fecha} (${f.proveedor.mapValue.fields.nombre ? f.proveedor.mapValue.fields.nombre.stringValue : ''})`);\n  }\n}\nif (!atrasados.length) return [];\nconst texto = `\\u23F0 *Pedidos de Obra \\u2014 ${atrasados.length} pedido(s) ATRASADO(s)*\\n\\n${atrasados.join('\\n')}\\n\\nhttps://skyterrasl.github.io/pedidos-obra/`;\nreturn ADMIN_WHATSAPP.filter(Boolean).map((n) => ({ json: { number: String(n).replace(/[^0-9]/g, ''), text: texto } }));"
+      },
+      "id": "filtrar-atrasados",
+      "name": "Filtrar atrasados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=EVOLUTION_URL/message/sendText/EVOLUTION_INSTANCE",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "PEGAR_EVOLUTION_APIKEY" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.number, text: $json.text }) }}",
+        "options": {}
+      },
+      "id": "enviar-whatsapp",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 300]
+    }
+  ],
+  "connections": {
+    "Todos los dias 8:00": { "main": [[{ "node": "Login bot Firebase", "type": "main", "index": 0 }]] },
+    "Login bot Firebase": { "main": [[{ "node": "Buscar pedidos abiertos", "type": "main", "index": 0 }]] },
+    "Buscar pedidos abiertos": { "main": [[{ "node": "Filtrar atrasados", "type": "main", "index": 0 }]] },
+    "Filtrar atrasados": { "main": [[{ "node": "Enviar WhatsApp", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "America/Argentina/Buenos_Aires" },
+  "active": false
+}
