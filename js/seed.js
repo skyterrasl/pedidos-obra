@@ -90,9 +90,21 @@ PO.seed = {
     const P = (n) => "P-" + String(n).padStart(4, "0");
     const nuevoRef = () => db.collection("pedidos").doc();
 
+    // Las reglas solo permiten CREAR pedidos como borrador/enviado (los
+    // estados avanzados se alcanzan por transición): acá se crean como
+    // "enviado" y un segundo batch los lleva a su estado final.
+    const estadosFinales = [];
+    const setPedido = (ref, data) => {
+      if (data.estado !== "borrador" && data.estado !== "enviado") {
+        estadosFinales.push({ ref, estado: data.estado });
+        data = Object.assign({}, data, { estado: "enviado" });
+      }
+      batch.set(ref, data);
+    };
+
     // P-0001 · entregado (con recepción completa + foto)
     const p1 = nuevoRef();
-    batch.set(p1, {
+    setPedido(p1, {
       numero: P(1), obraId: oCar.id, obraNombre: "CAR-233 · Cardales Village",
       rubro: "Hierros", solicitanteUid: demo1.uid, solicitanteNombre: demo1.nombre,
       creado: ts(20), prioridad: "normal", fechaNecesaria: fecha(-16), estado: "entregado",
@@ -108,7 +120,7 @@ PO.seed = {
 
     // P-0002 · entregado
     const p2 = nuevoRef();
-    batch.set(p2, {
+    setPedido(p2, {
       numero: P(2), obraId: oMol.id, obraNombre: "MOL-1047 · Casa Molina",
       rubro: "Pintura", solicitanteUid: demo2.uid, solicitanteNombre: demo2.nombre,
       creado: ts(15), prioridad: "normal", fechaNecesaria: fecha(-10), estado: "entregado",
@@ -123,7 +135,7 @@ PO.seed = {
 
     // P-0003 · cancelado
     const p3 = nuevoRef();
-    batch.set(p3, {
+    setPedido(p3, {
       numero: P(3), obraId: oSan.id, obraNombre: "SAN-118 · Santa Elena",
       rubro: "Sanitarios", solicitanteUid: demo1.uid, solicitanteNombre: demo1.nombre,
       creado: ts(12), prioridad: "normal", fechaNecesaria: fecha(-5), estado: "cancelado",
@@ -136,7 +148,7 @@ PO.seed = {
 
     // P-0004 · entrega_parcial (DOS recepciones, una con incidencia + fotos)
     const p4 = nuevoRef();
-    batch.set(p4, {
+    setPedido(p4, {
       numero: P(4), obraId: oMol.id, obraNombre: "MOL-1047 · Casa Molina",
       rubro: CORRALON, solicitanteUid: demo2.uid, solicitanteNombre: demo2.nombre,
       creado: ts(8), prioridad: "normal", fechaNecesaria: fecha(1), estado: "entrega_parcial",
@@ -157,7 +169,7 @@ PO.seed = {
 
     // P-0005 · pedido_proveedor ATRASADO (fecha estimada vencida)
     const p5 = nuevoRef();
-    batch.set(p5, {
+    setPedido(p5, {
       numero: P(5), obraId: oCar.id, obraNombre: "CAR-233 · Cardales Village",
       rubro: "Hierros", solicitanteUid: demo1.uid, solicitanteNombre: demo1.nombre,
       creado: ts(7), prioridad: "normal", fechaNecesaria: fecha(-1), estado: "pedido_proveedor",
@@ -171,7 +183,7 @@ PO.seed = {
 
     // P-0006 · pedido_proveedor en fecha
     const p6 = nuevoRef();
-    batch.set(p6, {
+    setPedido(p6, {
       numero: P(6), obraId: oSan.id, obraNombre: "SAN-118 · Santa Elena",
       rubro: "Electricidad", solicitanteUid: demo1.uid, solicitanteNombre: demo1.nombre,
       creado: ts(4), prioridad: "normal", fechaNecesaria: fecha(6), estado: "pedido_proveedor",
@@ -186,7 +198,7 @@ PO.seed = {
 
     // P-0007 · recibido
     const p7 = nuevoRef();
-    batch.set(p7, {
+    setPedido(p7, {
       numero: P(7), obraId: oMol.id, obraNombre: "MOL-1047 · Casa Molina",
       rubro: "Sanitarios", solicitanteUid: demo2.uid, solicitanteNombre: demo2.nombre,
       creado: ts(2), prioridad: "normal", fechaNecesaria: fecha(7), estado: "recibido",
@@ -199,7 +211,7 @@ PO.seed = {
 
     // P-0008 · enviado
     const p8 = nuevoRef();
-    batch.set(p8, {
+    setPedido(p8, {
       numero: P(8), obraId: oCar.id, obraNombre: "CAR-233 · Cardales Village",
       rubro: "Pintura", solicitanteUid: demo1.uid, solicitanteNombre: demo1.nombre,
       creado: ts(1), prioridad: "normal", fechaNecesaria: fecha(10), estado: "enviado",
@@ -211,7 +223,7 @@ PO.seed = {
 
     // P-0009 · enviado URGENTE
     const p9 = nuevoRef();
-    batch.set(p9, {
+    setPedido(p9, {
       numero: P(9), obraId: oMol.id, obraNombre: "MOL-1047 · Casa Molina",
       rubro: CORRALON, solicitanteUid: demo2.uid, solicitanteNombre: demo2.nombre,
       creado: ts(0.2), prioridad: "urgente", fechaNecesaria: fecha(1), estado: "enviado",
@@ -224,7 +236,7 @@ PO.seed = {
 
     // Borrador propio del admin que carga el seed (sin número)
     const p10 = nuevoRef();
-    batch.set(p10, {
+    setPedido(p10, {
       numero: null, obraId: oMol.id, obraNombre: "MOL-1047 · Casa Molina",
       rubro: "Herrería", solicitanteUid: usuario.uid, solicitanteNombre: yo,
       creado: ts(0.1), prioridad: "normal", fechaNecesaria: fecha(14), estado: "borrador",
@@ -238,6 +250,13 @@ PO.seed = {
     batch.set(db.collection("contadores").doc("pedidos"), { ultimo: 9 });
 
     await batch.commit();
+
+    /* Segundo paso: transiciones a los estados finales (permitidas al admin) */
+    if (estadosFinales.length) {
+      const batch2 = db.batch();
+      estadosFinales.forEach(({ ref, estado }) => batch2.update(ref, { estado }));
+      await batch2.commit();
+    }
 
     /* Recepciones + fotos de remito (después del batch: van en subcolecciones) */
     const fotoA = this.fotoRemito("Corralón Norte", "0001-00023410");
