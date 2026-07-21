@@ -582,7 +582,9 @@ textarea.input { resize: vertical; }
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  padding: 6px;
+  padding: 12px 10px;
+  min-height: 44px;
+  min-width: 44px;
 }
 
 /* ---------------------------------------------------------------- fotos --- */

@@ -740,13 +740,17 @@ window.PO = window.PO || {};
       disponibles.map((o) =>
         '<option value="' + esc(o.id) + '">' + esc(o.nombre) + "</option>"
       ).join("");
+    // Un toque menos en el caso más común: si solo tiene una obra asignada, se precarga.
+    if (disponibles.length === 1) $("pedido-obra").value = disponibles[0].id;
 
     $("pedido-rubro").innerHTML = '<option value="">Elegí el rubro…</option>' +
       estado.rubros.map((r) =>
         '<option value="' + esc(r.nombre) + '">' + esc(r.nombre) + "</option>"
       ).join("");
 
-    $("pedido-fecha").value = "";
+    // Se precarga hoy: para el pedido normal alcanza tal cual, y para uno con
+    // fecha puntual el director solo toca una vez para cambiarla.
+    $("pedido-fecha").value = hoyISO();
     $("pedido-fecha").min = hoyISO();
     $("pedido-obs").value = "";
     setPrioridad("normal");

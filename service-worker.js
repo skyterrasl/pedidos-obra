@@ -1,18 +1,18 @@
-/* ============================================================================
-   PEDIDOS DE OBRA · SKY TERRA — service-worker.js
-   Hace la app instalable (PWA) y rápida:
+﻿/* ============================================================================
+   PEDIDOS DE OBRA Â· SKY TERRA â€” service-worker.js
+   Hace la app instalable (PWA) y rÃ¡pida:
    - App shell (los archivos propios listados abajo): cache-first, se precachean
      al instalar.
-   - Todo lo demás del mismo origen: network-first con respaldo en cache.
-   - Firebase y otros orígenes: red directa (no se intercepta).
+   - Todo lo demÃ¡s del mismo origen: network-first con respaldo en cache.
+   - Firebase y otros orÃ­genes: red directa (no se intercepta).
 
-   Rutas RELATIVAS a propósito: la app puede vivir en un subpath tipo
+   Rutas RELATIVAS a propÃ³sito: la app puede vivir en un subpath tipo
    /pedidos-obra/ (GitHub Pages) sin tocar nada.
 
-   ¿Cambiaste archivos y no ves la novedad? Subí la versión (v1 → v2).
+   Â¿Cambiaste archivos y no ves la novedad? SubÃ­ la versiÃ³n (v1 â†’ v2).
    ============================================================================ */
 
-const CACHE = "pedidos-obra-v5";
+const CACHE = "pedidos-obra-v6";
 
 const APP_SHELL = [
   "./",
@@ -53,7 +53,7 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // Firebase / CDN: red directa
 
-  // ¿Es parte del app shell? → cache-first (carga instantánea y offline).
+  // Â¿Es parte del app shell? â†’ cache-first (carga instantÃ¡nea y offline).
   const base = new URL("./", self.location.href).pathname;
   const relativa = "." + url.pathname.slice(base.length - 1);
   const esShell = APP_SHELL.includes(relativa) || url.pathname === base;
