@@ -288,6 +288,17 @@
         <span>Fecha estimada de entrega</span>
         <input class="input" type="date" id="prov-fecha" />
       </label>
+      <div class="campo">
+        <span class="campo-titulo">¿Cómo llega?</span>
+        <div class="segmentado" id="seg-entrega">
+          <button type="button" class="seg-btn activo" data-valor="obra">Entrega en obra</button>
+          <button type="button" class="seg-btn" data-valor="retira">Retira alguien</button>
+        </div>
+      </div>
+      <label class="campo oculto" id="prov-retira-wrap">
+        <span>¿Quién retira?</span>
+        <input class="input" type="text" id="prov-retira" placeholder="Nombre de quien retira" />
+      </label>
       <label class="campo">
         <span>Nro de orden de compra (opcional)</span>
         <input class="input" type="text" id="prov-oc" />

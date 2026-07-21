@@ -162,6 +162,15 @@ PO.store = {
     await PO.fb.db.collection("pedidos").doc(pedidoId).update(cambios);
   },
 
+  /** Reclamo rápido (1 toque, sin nota): no cambia el estado, solo deja
+      constancia en el historial y avisa YA a la contraparte — para el patrón
+      real de "se atrasó, avisale" en vez de esperar la alerta diaria. */
+  async reclamarPedido(pedido, actor) {
+    const entry = { accion: "reclamo", usuarioNombre: actor.nombre, ts: PO.fb.tsAhora(), nota: "" };
+    await this.actualizarPedido(pedido.id, { historial: (pedido.historial || []).concat([entry]) });
+    this.notificarTransicion("reclamo", pedido, actor);
+  },
+
   async borrarPedido(pedidoId) {
     await PO.fb.db.collection("pedidos").doc(pedidoId).delete();
   },
@@ -251,6 +260,8 @@ PO.store = {
         return num + " entregado completo · " + obra;
       case "cancelado":
         return num + " cancelado por " + actor.nombre + " · " + obra;
+      case "reclamo":
+        return "RECLAMO de " + actor.nombre + " · " + num + " · " + obra;
       default:
         return num + ": " + evento;
     }
@@ -267,9 +278,10 @@ PO.store = {
       Fire-and-forget: no bloquea la UI, los errores solo se loguean. */
   async notificarTransicion(evento, pedido, actor) {
     try {
+      const notificaContraparte = ["cancelado", "reclamo"]; // avisa al "otro lado" de quien actuó
       const haciaAdmins =
         ["enviado", "entrega_parcial", "entregado"].includes(evento) ||
-        (evento === "cancelado" && actor.rol !== "admin");
+        (notificaContraparte.includes(evento) && actor.rol !== "admin");
 
       let destinatarios = [];
       if (haciaAdmins) {
@@ -299,7 +311,7 @@ PO.store = {
         pedido_proveedor: "pedido_proveedor",
         entrega_parcial: "recepcion",
         entregado: "recepcion"
-      }[evento] || null; // cancelado: sin toggle, avisa siempre
+      }[evento] || null; // cancelado y reclamo: sin toggle, avisan siempre
 
       const dest = destinatarios
         .filter((u) => u.whatsapp && (!toggle || !u.avisos || u.avisos[toggle] !== false))

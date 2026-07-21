@@ -91,7 +91,8 @@ window.PO = window.PO || {};
     recibido:         "Recibido por administración",
     pedido_proveedor: "Pedido al proveedor",
     recepcion:        "Recepción registrada",
-    cancelado:        "Pedido cancelado"
+    cancelado:        "Pedido cancelado",
+    reclamo:          "Reclamo enviado"
   };
 
   const INCIDENCIAS = [
@@ -429,6 +430,13 @@ window.PO = window.PO || {};
     // Modal proveedor
     $("proveedor-cancelar").addEventListener("click", () => cerrarModal("modal-proveedor"));
     $("proveedor-confirmar").addEventListener("click", onConfirmarProveedor);
+    $("seg-entrega").querySelectorAll(".seg-btn").forEach((b) =>
+      b.addEventListener("click", () => {
+        $("seg-entrega").querySelectorAll(".seg-btn").forEach((x) => x.classList.remove("activo"));
+        b.classList.add("activo");
+        $("prov-retira-wrap").classList.toggle("oculto", b.dataset.valor !== "retira");
+      })
+    );
     $("prov-nombre").addEventListener("input", () => {
       const v = $("prov-nombre").value.trim().toLowerCase();
       const existe = estado.proveedores.some((p) => (p.nombre || "").toLowerCase() === v);
@@ -1161,6 +1169,9 @@ window.PO = window.PO || {};
         dato("Entrega estimada", (atrasado ? "<span style='color:var(--peligro)'>" : "<span>") +
           fmtFecha(p.proveedor.fechaEstimada) + "</span>") +
         (p.proveedor.oc ? dato("Orden de compra", esc(p.proveedor.oc)) : "") +
+        dato("Entrega", p.proveedor.retira
+          ? "<span style='color:var(--alerta)'>Retira " + esc(p.proveedor.retira) + "</span>"
+          : "En obra") +
         (p.proveedor.observaciones ? dato("Observaciones", esc(p.proveedor.observaciones)) : "") +
         dato("Gestionó", esc(p.proveedor.usuarioNombre)) +
         "</div>";
@@ -1229,6 +1240,7 @@ window.PO = window.PO || {};
     }
     if ((soyAdmin || soyDirectorObra) && ["pedido_proveedor", "entrega_parcial"].includes(p.estado)) {
       botones.push('<button type="button" class="btn btn-primario" id="btn-recepcion">Registrar recepción</button>');
+      botones.push('<button type="button" class="btn btn-ghost" id="btn-reclamar" style="color:var(--alerta)">Reclamar</button>');
     }
     if (!esControl() && p.estado !== "borrador") {
       botones.push('<button type="button" class="btn btn-ghost" id="btn-duplicar">Duplicar pedido</button>');
@@ -1255,6 +1267,16 @@ window.PO = window.PO || {};
     on("btn-marcar-recibido", marcarRecibido);
     on("btn-pedir-proveedor", abrirModalProveedor);
     on("btn-recepcion", abrirModalRecepcion);
+    on("btn-reclamar", async (e) => {
+      e.target.disabled = true;
+      try {
+        await PO.store.reclamarPedido(p, u);
+        toast("Reclamo enviado a " + (soyAdmin ? p.solicitanteNombre : "administración") + ".");
+      } catch (err) {
+        toast("No se pudo reclamar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+    });
     on("btn-duplicar", () => {
       estado.duplicarDe = {
         obraId: p.obraId,
@@ -1329,6 +1351,10 @@ window.PO = window.PO || {};
     $("prov-fecha").value = "";
     $("prov-oc").value = "";
     $("prov-obs").value = "";
+    $("prov-retira").value = "";
+    $("seg-entrega").querySelectorAll(".seg-btn").forEach((b) =>
+      b.classList.toggle("activo", b.dataset.valor === "obra"));
+    $("prov-retira-wrap").classList.add("oculto");
     $("prov-guardar-wrap").classList.add("oculto");
     $("prov-guardar").checked = true;
     // Datalist: primero los proveedores del rubro del pedido
@@ -1350,13 +1376,16 @@ window.PO = window.PO || {};
 
     const oc = $("prov-oc").value.trim();
     const obs = $("prov-obs").value.trim();
+    const entregaTipo = $("seg-entrega").querySelector(".seg-btn.activo").dataset.valor; // "obra" | "retira"
+    const retira = entregaTipo === "retira" ? $("prov-retira").value.trim() : "";
+    if (entregaTipo === "retira" && !retira) { mostrarError("proveedor-error", "Indicá quién retira."); return; }
     const u = estado.usuario;
 
     const existe = estado.proveedores.some((x) => (x.nombre || "").toLowerCase() === nombre.toLowerCase());
     const guardarNuevo = !existe && $("prov-guardar").checked;
 
     const nota = "Proveedor: " + nombre + " · Llega: " + fmtFecha(fechaEstimada) +
-      (oc ? " · OC: " + oc : "") + (obs ? " · " + obs : "");
+      (oc ? " · OC: " + oc : "") + (retira ? " · Retira: " + retira : "") + (obs ? " · " + obs : "");
 
     $("proveedor-confirmar").disabled = true;
     try {
@@ -1364,6 +1393,7 @@ window.PO = window.PO || {};
         nombre,
         fechaEstimada,
         oc: oc || null,
+        retira: retira || null,
         observaciones: obs || null,
         usuarioNombre: u.nombre,
         ts: PO.fb.tsAhora()
@@ -1382,7 +1412,7 @@ window.PO = window.PO || {};
       }
       PO.store.notificarTransicion("pedido_proveedor", { ...p, estado: "pedido_proveedor", proveedor }, u);
       cerrarModal("modal-proveedor");
-      toast("Pedido " + p.numero + " pedido a " + nombre + ".");
+      toast("Pedido " + p.numero + " pedido a " + nombre + (retira ? " (retira " + retira + ")" : "") + ".");
     } catch (e) {
       mostrarError("proveedor-error", "No se pudo guardar: " + (e.message || e));
     } finally {

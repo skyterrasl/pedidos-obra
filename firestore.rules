@@ -117,7 +117,8 @@ service cloud.firestore {
       // - admin: todas.
       // - director: (a) editar/enviar SU borrador, (b) recepciones en obras
       //   asignadas (resultado entrega_parcial/entregado), (c) cancelar SU
-      //   pedido. Nunca puede poner 'recibido' ni 'pedido_proveedor'.
+      //   pedido, (d) reclamar (NO cambia estado, solo agrega historial) en
+      //   obras asignadas. Nunca puede poner 'recibido' ni 'pedido_proveedor'.
       allow update: if esAdmin()
         || (esDirector() && (
              (resource.data.estado == 'borrador'
@@ -128,6 +129,10 @@ service cloud.firestore {
                && asignadoAObra(resource.data.obraId))
           || (request.resource.data.estado == 'cancelado'
                && resource.data.solicitanteUid == request.auth.uid)
+          || (request.resource.data.estado == resource.data.estado
+               && resource.data.estado in ['pedido_proveedor', 'entrega_parcial']
+               && asignadoAObra(resource.data.obraId)
+               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['historial']))
         ));
 
       // Solo se borran borradores, y solo su dueño (o admin).
