@@ -1,4 +1,5 @@
 {
+  "id": "pedidosObraAlertaAtrasados",
   "name": "Pedidos de Obra - Alerta diaria de atrasados",
   "nodes": [
     {
@@ -33,7 +34,7 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $json.idToken }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $('Login bot Firebase').first().json.idToken }}" },
             { "name": "content-type", "value": "application/json" }
           ]
         },
@@ -50,19 +51,41 @@
     },
     {
       "parameters": {
+        "method": "POST",
+        "url": "https://firestore.googleapis.com/v1/projects/pedidos-obra-skyterra/databases/(default)/documents:runQuery",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $('Login bot Firebase').first().json.idToken }}" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ structuredQuery: { from: [{ collectionId: 'usuarios' }], limit: 100 } }) }}",
+        "options": {}
+      },
+      "id": "query-admins",
+      "name": "Buscar admins",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// Filtra los vencidos (fechaEstimada < hoy) y arma un resumen por WhatsApp\n// para los numeros de ADMIN_WHATSAPP (editar abajo).\nconst ADMIN_WHATSAPP = ['PEGAR_NUMERO_ADMIN'];\nconst hoy = new Date().toISOString().slice(0, 10);\nconst atrasados = [];\nfor (const item of $input.all()) {\n  const doc = item.json.document;\n  if (!doc) continue;\n  const f = doc.fields || {};\n  const fecha = f.proveedor && f.proveedor.mapValue && f.proveedor.mapValue.fields && f.proveedor.mapValue.fields.fechaEstimada ? f.proveedor.mapValue.fields.fechaEstimada.stringValue : null;\n  if (fecha && fecha < hoy) {\n    atrasados.push(`\\u2022 *${f.numero ? f.numero.stringValue : '?'}* ${f.obraNombre ? f.obraNombre.stringValue : ''} \\u2014 estimado ${fecha} (${f.proveedor.mapValue.fields.nombre ? f.proveedor.mapValue.fields.nombre.stringValue : ''})`);\n  }\n}\nif (!atrasados.length) return [];\nconst texto = `\\u23F0 *Pedidos de Obra \\u2014 ${atrasados.length} pedido(s) ATRASADO(s)*\\n\\n${atrasados.join('\\n')}\\n\\nhttps://skyterrasl.github.io/pedidos-obra/`;\nreturn ADMIN_WHATSAPP.filter(Boolean).map((n) => ({ json: { number: String(n).replace(/[^0-9]/g, ''), text: texto } }));"
+        "jsCode": "// Destinatarios: usuarios rol admin, activos, con whatsapp cargado en su Perfil.\nconst sv = (f, k) => (f && f[k] && f[k].stringValue) || '';\nconst admins = [];\nfor (const item of $input.all()) {\n  const doc = item.json.document;\n  if (!doc) continue;\n  const f = doc.fields || {};\n  const activo = f.activo && f.activo.booleanValue;\n  const wa = sv(f, 'whatsapp').replace(/[^0-9]/g, '');\n  if (sv(f, 'rol') === 'admin' && activo && wa) admins.push(wa);\n}\n// Pedidos vencidos (fechaEstimada < hoy) del nodo anterior.\nconst hoy = new Date().toISOString().slice(0, 10);\nconst atrasados = [];\nfor (const item of $('Buscar pedidos abiertos').all()) {\n  const doc = item.json.document;\n  if (!doc) continue;\n  const f = doc.fields || {};\n  const prov = f.proveedor && f.proveedor.mapValue && f.proveedor.mapValue.fields;\n  const fecha = prov && prov.fechaEstimada ? prov.fechaEstimada.stringValue : null;\n  if (fecha && fecha < hoy) {\n    atrasados.push(`\\u2022 *${sv(f, 'numero') || '?'}* ${sv(f, 'obraNombre')} \\u2014 estimado ${fecha} (${prov && prov.nombre ? prov.nombre.stringValue : ''})`);\n  }\n}\nif (!atrasados.length || !admins.length) return [];\nconst texto = `\\u23F0 *Pedidos de Obra \\u2014 ${atrasados.length} pedido(s) ATRASADO(s)*\\n\\n${atrasados.join('\\n')}\\n\\nhttps://skyterrasl.github.io/pedidos-obra/`;\nreturn admins.map((n) => ({ json: { number: n, text: texto } }));"
       },
       "id": "filtrar-atrasados",
       "name": "Filtrar atrasados",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [880, 300]
+      "position": [1100, 140]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "=EVOLUTION_URL/message/sendText/EVOLUTION_INSTANCE",
+        "url": "http://evolution-api-1:8080/message/sendText/principal",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -85,7 +108,8 @@
   "connections": {
     "Todos los dias 8:00": { "main": [[{ "node": "Login bot Firebase", "type": "main", "index": 0 }]] },
     "Login bot Firebase": { "main": [[{ "node": "Buscar pedidos abiertos", "type": "main", "index": 0 }]] },
-    "Buscar pedidos abiertos": { "main": [[{ "node": "Filtrar atrasados", "type": "main", "index": 0 }]] },
+    "Buscar pedidos abiertos": { "main": [[{ "node": "Buscar admins", "type": "main", "index": 0 }]] },
+    "Buscar admins": { "main": [[{ "node": "Filtrar atrasados", "type": "main", "index": 0 }]] },
     "Filtrar atrasados": { "main": [[{ "node": "Enviar WhatsApp", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1", "timezone": "America/Argentina/Buenos_Aires" },

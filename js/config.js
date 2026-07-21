@@ -25,7 +25,14 @@ window.APP_CONFIG = {
      JSON en cada transición de estado, con los destinatarios ya calculados
      según las preferencias de cada usuario (número de WhatsApp y avisos
      activados en su Perfil). */
-  WEBHOOK_URL: "",
+  WEBHOOK_URL: "https://n8n.skyterra.com.ar/webhook/pedidos-obra-aviso",
+
+  /* Clave compartida que viaja en el header x-app-key de cada aviso al
+     webhook. La app es pública (GitHub Pages), así que esto NO es un
+     secreto real — solo evita que un bot de internet dispare avisos por
+     WhatsApp probando la URL a ciegas. El workflow de n8n valida esta
+     misma clave antes de mandar cualquier mensaje. */
+  WEBHOOK_KEY: "5c6c1988aee952715b4fc1c49ff83d52",
 
   /* Unidades sugeridas al cargar ítems (se puede escribir cualquier otra). */
   UNIDADES: ["un.", "m²", "m³", "kg", "bolsa", "pallet", "ml", "lts"],

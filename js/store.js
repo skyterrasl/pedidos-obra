@@ -307,7 +307,10 @@ PO.store = {
 
       fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-app-key": (window.APP_CONFIG || {}).WEBHOOK_KEY || ""
+        },
         body: JSON.stringify({
           evento,
           pedido: {
