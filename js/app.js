@@ -102,6 +102,16 @@ window.PO = window.PO || {};
     "Otro (ver nota)"
   ];
 
+  // Direcciones detectadas en el chat real de WhatsApp "Compras Skyterra"
+  // (2026-07-21, ~5.800 mensajes) — sugerencias para cargar obras reales
+  // rápido, con la nomenclatura que el equipo ya usa. Solo un atajo para
+  // completar el nombre; no crean nada hasta que se confirme "Agregar obra".
+  const SUGERENCIAS_OBRAS_CHAT = [
+    "Amarras 274", "Riberas 253", "Riberas 19", "Alcanfores 139",
+    "Amarras 267", "Villa del Haras", "Riberas 131", "Riberas 82",
+    "Amarras 442", "Riberas 84"
+  ];
+
   const MAX_BASE64 = 700 * 1024; // ~700 KB por archivo (límite de doc: 1 MB)
   const AUTOSAVE_KEY = "po-autosave-pedido";
 
@@ -355,6 +365,7 @@ window.PO = window.PO || {};
     });
     $("form-login").addEventListener("submit", onLogin);
     $("form-registro").addEventListener("submit", onRegistro);
+    $("btn-olvide-pass").addEventListener("click", onOlvidePass);
     $("btn-salir").addEventListener("click", () => PO.fb.auth.signOut());
 
     // Navegación
@@ -479,6 +490,22 @@ window.PO = window.PO || {};
       mostrarError("login-error", errorAuthES(err));
     } finally {
       $("btn-login").disabled = false;
+    }
+  }
+
+  async function onOlvidePass(e) {
+    e.preventDefault();
+    mostrarError("login-error", "");
+    const email = $("login-email").value.trim();
+    if (!email) {
+      mostrarError("login-error", "Escribí tu email en el campo de arriba y volvé a tocar el link.");
+      return;
+    }
+    try {
+      await PO.fb.auth.sendPasswordResetEmail(email);
+      toast("Te mandamos un mail a " + email + " para restablecer tu contraseña.");
+    } catch (err) {
+      mostrarError("login-error", errorAuthES(err));
     }
   }
 
@@ -1628,8 +1655,21 @@ window.PO = window.PO || {};
     const editando = estado.obraEditandoId
       ? estado.obras.find((o) => o.id === estado.obraEditandoId) : null;
 
+    const obrasExistentes = new Set(estado.obras.map((o) => (o.nombre || "").trim().toLowerCase()));
+    const sugerencias = SUGERENCIAS_OBRAS_CHAT.filter((s) => !obrasExistentes.has(s.toLowerCase()));
+
     cont.innerHTML =
       '<div class="gestion-form"><h4>' + (editando ? "Editar obra" : "Nueva obra") + "</h4>" +
+      (!editando && sugerencias.length
+        ? '<div class="campo"><span class="campo-titulo">Sugerencias del chat de compras</span>' +
+          '<div class="chips" id="chips-sugerencias-obra">' +
+          sugerencias.map((s) =>
+            '<button type="button" class="chip" data-sugerencia="' + esc(s) + '">' + esc(s) + "</button>"
+          ).join("") +
+          "</div>" +
+          '<p class="nota-suave">Tocá una para precargar el nombre — completá dirección/cliente y confirmá "Agregar obra".</p>' +
+          "</div>"
+        : "") +
       '<label class="campo"><span>Nombre (ej: MOL-1047 · Casa Molina)</span>' +
       '<input class="input" id="obra-nombre" value="' + esc(editando ? editando.nombre : "") + '" /></label>' +
       '<label class="campo"><span>Dirección</span>' +
@@ -1696,6 +1736,12 @@ window.PO = window.PO || {};
     if (bCanc) bCanc.addEventListener("click", () => { estado.obraEditandoId = null; renderTabObras(); });
     cont.querySelectorAll("[data-editar]").forEach((b) =>
       b.addEventListener("click", () => { estado.obraEditandoId = b.dataset.editar; renderTabObras(); })
+    );
+    cont.querySelectorAll("[data-sugerencia]").forEach((b) =>
+      b.addEventListener("click", () => {
+        $("obra-nombre").value = b.dataset.sugerencia;
+        $("obra-nombre").focus();
+      })
     );
   }
 

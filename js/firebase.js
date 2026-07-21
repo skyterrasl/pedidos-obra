@@ -32,6 +32,9 @@ PO.fb = {
       this.auth = firebase.auth();
       this.db = firebase.firestore();
 
+      // Mails de Firebase (reset de contraseña, etc.) en español.
+      this.auth.languageCode = "es";
+
       // Login persistente: se loguea una vez y queda en el dispositivo.
       this.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
 
