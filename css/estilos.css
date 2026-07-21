@@ -118,6 +118,18 @@ code {
 }
 .auth-alternativa a { color: var(--acento); font-weight: 600; text-decoration: none; }
 
+.btn-link {
+  border: none;
+  background: transparent;
+  color: var(--acento);
+  font-weight: 600;
+  font-family: inherit;
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
 /* --------------------------------------------------------------- topbar --- */
 
 .topbar {

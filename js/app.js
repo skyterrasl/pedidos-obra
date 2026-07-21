@@ -1667,7 +1667,9 @@ window.PO = window.PO || {};
             '<button type="button" class="chip" data-sugerencia="' + esc(s) + '">' + esc(s) + "</button>"
           ).join("") +
           "</div>" +
-          '<p class="nota-suave">Tocá una para precargar el nombre — completá dirección/cliente y confirmá "Agregar obra".</p>' +
+          '<p class="nota-suave">Tocá una para precargar el nombre y completar dirección/cliente, o ' +
+          '<button type="button" class="btn-link" id="btn-cargar-sugerencias-obra">cargalas todas de una</button> ' +
+          "(quedan activas, sin director asignado — se completan después).</p>" +
           "</div>"
         : "") +
       '<label class="campo"><span>Nombre (ej: MOL-1047 · Casa Molina)</span>' +
@@ -1743,21 +1745,41 @@ window.PO = window.PO || {};
         $("obra-nombre").focus();
       })
     );
+    const bCargarTodas = $("btn-cargar-sugerencias-obra");
+    if (bCargarTodas) bCargarTodas.addEventListener("click", async () => {
+      bCargarTodas.disabled = true;
+      try {
+        for (const nombre of sugerencias) {
+          await PO.store.guardarObra(null, {
+            nombre, direccion: "", cliente: "", estado: "activa", directores: []
+          });
+        }
+        toast(sugerencias.length + " obra(s) cargada(s). Asignales director cuando corresponda.");
+        renderTabObras();
+      } catch (e) {
+        toast("No se pudieron cargar todas: " + (e.message || e));
+        bCargarTodas.disabled = false;
+      }
+    });
   }
 
   /* --- Rubros --- */
 
   function renderTabRubros() {
     const cont = $("gestion-contenido");
+    const yaCargados = new Set(estado.rubros.map((r) => r.nombre.toLowerCase()));
+    const faltantes = (window.APP_CONFIG.RUBROS_DEFAULT || [])
+      .filter((n) => !yaCargados.has(n.toLowerCase()));
     cont.innerHTML =
       '<p class="nota-suave" style="margin-bottom:10px">Un pedido pertenece a UN solo rubro: si una obra necesita electricidad y corralón, van dos pedidos.</p>' +
       '<div class="fila-alta">' +
         '<input class="input" id="rubro-nuevo" placeholder="Nuevo rubro…" />' +
         '<button type="button" class="btn btn-primario" id="btn-agregar-rubro">Agregar</button>' +
       "</div>" +
-      (!estado.rubros.length
-        ? '<div class="lista-vacia" style="margin-bottom:10px">Sin rubros.<br/><br/>' +
-          '<button type="button" class="btn btn-ghost" id="btn-rubros-default">Cargar rubros por defecto</button></div>'
+      (faltantes.length
+        ? '<div class="lista-vacia" style="margin-bottom:10px">Faltan ' + faltantes.length + ' rubro(s) sugerido(s) (' +
+          esc(faltantes.join(", ")) + ").<br/><br/>" +
+          '<button type="button" class="btn btn-ghost" id="btn-rubros-default">Cargar los que faltan</button></div>'
         : "") +
       '<ul class="lista-gestion">' +
       estado.rubros.map((r) =>
@@ -1783,11 +1805,11 @@ window.PO = window.PO || {};
     if (bDef) bDef.addEventListener("click", async () => {
       bDef.disabled = true;
       try {
-        for (const nombre of (window.APP_CONFIG.RUBROS_DEFAULT || [])) {
+        for (const nombre of faltantes) {
           await PO.store.guardarRubro(null, nombre);
         }
-        toast("Rubros por defecto cargados.");
-      } catch (e) { toast("No se pudieron cargar: " + (e.message || e)); }
+        toast(faltantes.length + " rubro(s) cargado(s).");
+      } catch (e) { toast("No se pudieron cargar: " + (e.message || e)); bDef.disabled = false; }
     });
     cont.querySelectorAll("[data-editar]").forEach((b) =>
       b.addEventListener("click", () => {
@@ -1822,9 +1844,25 @@ window.PO = window.PO || {};
     const cont = $("gestion-contenido");
     const editando = estado.proveedorEditandoId
       ? estado.proveedores.find((x) => x.id === estado.proveedorEditandoId) : null;
+    const yaCargados = new Set(estado.proveedores.map((x) => (x.nombre || "").toLowerCase()));
+    const sugProv = (window.APP_CONFIG.PROVEEDORES_SUGERIDOS || [])
+      .filter((s) => !yaCargados.has(s.nombre.toLowerCase()));
 
     cont.innerHTML =
       '<div class="gestion-form"><h4>' + (editando ? "Editar proveedor" : "Nuevo proveedor") + "</h4>" +
+      (!editando && sugProv.length
+        ? '<div class="campo"><span class="campo-titulo">Sugeridos por rubro</span>' +
+          '<div class="chips" id="chips-sugerencias-prov">' +
+          sugProv.map((s) =>
+            '<button type="button" class="chip" data-sug-nombre="' + esc(s.nombre) +
+            '" data-sug-rubro="' + esc(s.rubro) + '">' + esc(s.nombre) +
+            ' <span class="chip-num">' + esc(s.rubro) + "</span></button>"
+          ).join("") +
+          "</div>" +
+          '<p class="nota-suave">Tocá uno para precargar, o ' +
+          '<button type="button" class="btn-link" id="btn-cargar-sugerencias-prov">cargalos todos de una</button>.</p>' +
+          "</div>"
+        : "") +
       '<label class="campo"><span>Nombre</span>' +
       '<input class="input" id="prov-form-nombre" value="' + esc(editando ? editando.nombre : "") + '" /></label>' +
       '<label class="campo"><span>Rubros (separados por coma)</span>' +
@@ -1887,6 +1925,29 @@ window.PO = window.PO || {};
         catch (e) { toast("No se pudo borrar: " + (e.message || e)); }
       })
     );
+    cont.querySelectorAll("[data-sug-nombre]").forEach((b) =>
+      b.addEventListener("click", () => {
+        $("prov-form-nombre").value = b.dataset.sugNombre;
+        $("prov-form-rubros").value = b.dataset.sugRubro;
+        $("prov-form-nombre").focus();
+      })
+    );
+    const bCargarProv = $("btn-cargar-sugerencias-prov");
+    if (bCargarProv) bCargarProv.addEventListener("click", async () => {
+      bCargarProv.disabled = true;
+      try {
+        for (const s of sugProv) {
+          await PO.store.guardarProveedor(null, {
+            nombre: s.nombre, rubros: [s.rubro], telefono: "", observaciones: ""
+          });
+        }
+        toast(sugProv.length + " proveedor(es) cargado(s).");
+        renderTabProveedores();
+      } catch (e) {
+        toast("No se pudieron cargar todos: " + (e.message || e));
+        bCargarProv.disabled = false;
+      }
+    });
   }
 
   /* --- Usuarios --- */

@@ -45,6 +45,47 @@ window.APP_CONFIG = {
     "Materiales gruesos (corralón)",
     "Hierros",
     "Pintura",
-    "Herrería"
+    "Herrería",
+    "Maderas",
+    "Hormigones",
+    "Volquetes",
+    "Revestimiento",
+    "Porcelanatos",
+    "Fletes",
+    "Aberturas"
+  ],
+
+  /* Proveedores sugeridos por rubro (los pasó Iván). Aparecen como chips en
+     Gestión → Proveedores para precargar nombre + rubro rápido; no crean
+     nada hasta confirmar "Agregar proveedor". */
+  PROVEEDORES_SUGERIDOS: [
+    { nombre: "Newton", rubro: "Maderas" },
+    { nombre: "Aserradero Panamericano", rubro: "Maderas" },
+    { nombre: "Batezzatti", rubro: "Electricidad" },
+    { nombre: "Electro Norte", rubro: "Electricidad" },
+    { nombre: "Pelba", rubro: "Electricidad" },
+    { nombre: "Super Chapa", rubro: "Herrería" },
+    { nombre: "Mundo Hierro", rubro: "Herrería" },
+    { nombre: "Tubo Center", rubro: "Herrería" },
+    { nombre: "CMP", rubro: "Herrería" },
+    { nombre: "Sólido Herrajes", rubro: "Herrería" },
+    { nombre: "Sanitario del Este", rubro: "Sanitarios" },
+    { nombre: "Hokama", rubro: "Sanitarios" },
+    { nombre: "Konecta", rubro: "Sanitarios" },
+    { nombre: "Ombú", rubro: "Hormigones" },
+    { nombre: "Concret Vial", rubro: "Hormigones" },
+    { nombre: "Cavalsa", rubro: "Hormigones" },
+    { nombre: "Volquetes Nahuel", rubro: "Volquetes" },
+    { nombre: "La Nueva Norte", rubro: "Volquetes" },
+    { nombre: "El Mono", rubro: "Volquetes" },
+    { nombre: "Pinturería del Plata", rubro: "Pintura" },
+    { nombre: "Quintex", rubro: "Pintura" },
+    { nombre: "Revesco", rubro: "Revestimiento" },
+    { nombre: "Sebastián Gamarra", rubro: "Revestimiento" },
+    { nombre: "Tarquini", rubro: "Revestimiento" },
+    { nombre: "Protex", rubro: "Revestimiento" },
+    { nombre: "Megaporcelanatos", rubro: "Porcelanatos" },
+    { nombre: "Decomármol", rubro: "Porcelanatos" },
+    { nombre: "San Jerónimo", rubro: "Aberturas" }
   ]
 };
