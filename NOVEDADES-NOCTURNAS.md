@@ -123,3 +123,41 @@ sigo con ese cuidado el resto de la noche.
 **Commit:** `4bb6c9b` — pusheado.
 
 ---
+
+## Ciclo 4 — Auditoría sistemática de tamaños táctiles
+
+**Qué se investigó:** el estándar real de tamaño mínimo táctil — iOS pide 44pt, Android
+(Material Design) pide 48dp. Para cubrir los dos sistemas (la app la usan celulares
+mixtos) conviene apuntar a 48px como piso.
+
+**Qué se encontró auditando:** ya se habían corregido casos puntuales en ciclos
+anteriores de la sesión (auto-selección de obra, fecha por defecto, botón "Quitar"
+material a 44px), pero al revisar el CSS completo aparecieron **varios elementos de uso
+frecuente por debajo del estándar**, algunos bastante:
+- **La campana de notificaciones**: 40×36px — la más grave, porque está en el header de
+  TODAS las pantallas y la usa cualquier rol.
+- **"‹ Volver"**: ~33px de alto — se toca todo el tiempo al salir de un detalle.
+- **Los chips de filtro** (estado en el listado, y los que se agregaron esta sesión para
+  cargar obras/proveedores sugeridos): ~34px de alto — se tocan seguido al filtrar.
+
+Quedaron **documentados pero sin tocar todavía** (por priorizar 1-3 cambios de bajo
+riesgo por ciclo, no un rediseño grande): los botones "Editar/Borrar" de Gestión
+(~34px), las pestañas de Gestión (Obras/Rubros/Proveedores/Usuarios, ~38px), los
+selects chicos de filtros (~37px) y el segmentado Normal/Urgente (~41px, muy cerca ya).
+Ninguno es gravísimo y todos son de pantallas más de oficina que de campo — quedan para
+un ciclo futuro si hace falta.
+
+**Qué se hizo:** campana → 48×48px; "Volver" y chips → `min-height: 44px` con
+`display: inline-flex; align-items: center` para que el contenido quede bien
+centrado con el alto nuevo.
+
+**Verificación:** medí el tamaño REAL renderizado con Playwright (no solo cálculo a
+ojo): campana 48×48px, Volver 44px de alto, chip 44px de alto — los tres dentro del
+estándar. Capturé también una vista conjunta para chequear que no se vea desproporcionado
+(`_capturas/touch-targets-ciclo4.png`) — se ve prolijo. De paso confirmé que un detalle
+que pareció un bug (número pegado al texto en el chip) era solo de mi HTML de prueba,
+no del código real (que sí tiene el espacio).
+
+**Commit:** `[se completa al pushear]`
+
+---
