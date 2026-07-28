@@ -193,6 +193,6 @@ cuando todavía no hay historial propio de esa obra/rubro.
 estados y la lista con "Por comenzar" sin apagar. Todo queda como sugerencia — no se
 escribió nada en la base de Firebase real, Iván lo carga con el botón cuando quiera.
 
-**Commit:** `[se completa al pushear]`
+**Commit:** `65354dd` — pusheado.
 
 ---
