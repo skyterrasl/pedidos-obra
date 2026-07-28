@@ -79,7 +79,11 @@ service cloud.firestore {
     match /obras/{obraId} {
       allow read: if logueado();
       allow create, update: if esAdmin();
-      allow delete: if false; // se finalizan/pausan, no se borran (historial)
+      // Admin puede borrar una obra cargada por error. Los pedidos viejos NO
+      // se rompen: cada pedido guarda su propio obraNombre, así que el
+      // historial se sigue leyendo aunque la obra ya no exista. Para una obra
+      // que sí trabajó, lo correcto sigue siendo "finalizada", no borrarla.
+      allow delete: if esAdmin();
     }
 
     // ------------------------------------------------------------------ rubros
