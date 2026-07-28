@@ -388,18 +388,21 @@ textarea.input { resize: vertical; }
 
 .filtros { margin-bottom: 12px; }
 
+/* Los chips ENVUELVEN en varias filas en vez de scrollear de costado:
+   con muchas obras/proveedores un carril horizontal se siente como que
+   la pantalla "se va al costado" en el celular, y obliga a deslizar para
+   descubrir lo que no se ve. Envueltos entran todos y nada se mueve. */
 .chips {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
   padding-bottom: 8px;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  max-width: 100%;
 }
-.chips::-webkit-scrollbar { display: none; }
 
 .chip {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  max-width: 100%;
   border: 1px solid var(--borde);
   background: var(--tarjeta);
   color: var(--texto-suave);
@@ -414,6 +417,18 @@ textarea.input { resize: vertical; }
   cursor: pointer;
   white-space: nowrap;
 }
+.desplegable { margin-top: 10px; }
+.desplegable > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--acento);
+  font-size: 14px;
+  font-weight: 600;
+}
+.desplegable > summary::marker { color: var(--texto-suave); }
+
 .chip.activo {
   background: var(--acento);
   border-color: var(--acento);

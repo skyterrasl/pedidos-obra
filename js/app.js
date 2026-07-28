@@ -1777,17 +1777,21 @@ window.PO = window.PO || {};
     cont.innerHTML =
       '<div class="gestion-form"><h4>' + (editando ? "Editar obra" : "Nueva obra") + "</h4>" +
       (!editando && sugerencias.length
-        ? '<div class="campo"><span class="campo-titulo">Obras activas y por comenzar (planilla)</span>' +
+        ? '<div class="campo">' +
+          '<button type="button" class="btn btn-primario btn-bloque" id="btn-cargar-sugerencias-obra">' +
+            "Cargar las " + sugerencias.length + " obras de la planilla</button>" +
+          '<p class="nota-suave" style="margin-top:8px">Activas y por comenzar. Quedan sin ' +
+          "dirección/cliente/director: se completan después.</p>" +
+          // Colapsado: con 30 obras, la lista suelta empuja el formulario
+          // fuera de pantalla. El botón de arriba resuelve el caso normal.
+          '<details class="desplegable"><summary>Cargar solo una…</summary>' +
           '<div class="chips" id="chips-sugerencias-obra">' +
           sugerencias.map((s) =>
             '<button type="button" class="chip" data-sugerencia="' + esc(s.nombre) +
             '" data-sug-estado="' + esc(s.estado) + '">' + esc(s.nombre) +
             ' <span class="chip-num">' + esc(ESTADOS_OBRA[s.estado]) + "</span></button>"
           ).join("") +
-          "</div>" +
-          '<p class="nota-suave">Tocá una para precargar el nombre, o ' +
-          '<button type="button" class="btn-link" id="btn-cargar-sugerencias-obra">cargalas todas de una</button> ' +
-          "(sin dirección/cliente/director todavía — se completan después).</p>" +
+          "</div></details>" +
           "</div>"
         : "") +
       '<label class="campo"><span>Nombre (código de la planilla, ej: AMA-274)</span>' +
@@ -1971,16 +1975,17 @@ window.PO = window.PO || {};
     cont.innerHTML =
       '<div class="gestion-form"><h4>' + (editando ? "Editar proveedor" : "Nuevo proveedor") + "</h4>" +
       (!editando && sugProv.length
-        ? '<div class="campo"><span class="campo-titulo">Sugeridos por rubro</span>' +
+        ? '<div class="campo">' +
+          '<button type="button" class="btn btn-primario btn-bloque" id="btn-cargar-sugerencias-prov">' +
+            "Cargar los " + sugProv.length + " proveedores</button>" +
+          '<details class="desplegable"><summary>Cargar solo uno…</summary>' +
           '<div class="chips" id="chips-sugerencias-prov">' +
           sugProv.map((s) =>
             '<button type="button" class="chip" data-sug-nombre="' + esc(s.nombre) +
             '" data-sug-rubro="' + esc(s.rubro) + '">' + esc(s.nombre) +
             ' <span class="chip-num">' + esc(s.rubro) + "</span></button>"
           ).join("") +
-          "</div>" +
-          '<p class="nota-suave">Tocá uno para precargar, o ' +
-          '<button type="button" class="btn-link" id="btn-cargar-sugerencias-prov">cargalos todos de una</button>.</p>' +
+          "</div></details>" +
           "</div>"
         : "") +
       '<label class="campo"><span>Nombre</span>' +
