@@ -158,6 +158,6 @@ estándar. Capturé también una vista conjunta para chequear que no se vea desp
 que pareció un bug (número pegado al texto en el chip) era solo de mi HTML de prueba,
 no del código real (que sí tiene el espacio).
 
-**Commit:** `[se completa al pushear]`
+**Commit:** `d6bd08f` — pusheado.
 
 ---
