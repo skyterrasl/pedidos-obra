@@ -161,3 +161,38 @@ no del código real (que sí tiene el espacio).
 **Commit:** `d6bd08f` — pusheado.
 
 ---
+
+## A pedido directo de Iván (fuera del loop, en vivo) — obras reales + estado "por comenzar" + materiales de ejemplo
+
+Iván estaba despierto chequeando el progreso y pidió esto directamente, no fue una
+mejora que se me ocurrió sola. Quedó documentado igual porque es un cambio real.
+
+**Obras reales:** pidió que el desplegable de obra muestre las obras "activas y por
+comenzar" de su planilla ("Caja y operación" / Ingresos SKY, columna CENTRO). El link
+que tenía guardado de esa planilla ya no resolvía (conector de Drive en otra cuenta que
+la que tiene acceso); en vez de adivinar, le pregunté y me pasó la lista real a mano (30
+obras, código CENTRO + activa/por comenzar). Reemplacé la lista de sugerencias vieja
+(la que había sacado del chat de WhatsApp, mucho menos precisa) por esta.
+**Instrucción explícita de Iván: los códigos van tal cual, sin agregarles nombre de
+barrio ni nada** — así quedó.
+
+**Estado "por comenzar":** el modelo de obras solo tenía activa/pausada/finalizada.
+Sumé un cuarto estado `por_comenzar` (con su propia etiqueta, sin verse "apagado" como
+pausada/finalizada) y actualicé el desplegable de "Nuevo pedido" para que muestre
+obras activas Y por comenzar — así se puede ir cargando pedidos antes de que arranque
+la obra, que era el pedido concreto.
+
+**Materiales de ejemplo por rubro:** pidió lo mismo que con las obras pero para
+materiales — nomenclatura real del chat de WhatsApp, uno de cada rubro. Fui al chat y
+saqué un ejemplo genuino por rubro (12 de 13 — Revestimiento no tiene un ejemplo propio
+en el chat, solo aparece mezclado con Porcelanatos, así que lo dejé afuera en vez de
+inventar uno). Se usan como base del autocompletado de materiales en Nuevo pedido
+cuando todavía no hay historial propio de esa obra/rubro.
+
+**Verificación:** sintaxis ok, capturas visuales del formulario de obra con los 4
+estados y la lista con "Por comenzar" sin apagar. Todo queda como sugerencia — no se
+escribió nada en la base de Firebase real, Iván lo carga con el botón cuando quiera.
+
+**Commit:** `[se completa al pushear]`
+
+---

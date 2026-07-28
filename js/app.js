@@ -85,6 +85,15 @@ window.PO = window.PO || {};
 
   const ABIERTOS = ["enviado", "recibido", "pedido_proveedor", "entrega_parcial"];
 
+  const ESTADOS_OBRA = {
+    activa: "Activa",
+    por_comenzar: "Por comenzar",
+    pausada: "Pausada",
+    finalizada: "Finalizada"
+  };
+  // Obras seleccionables para cargar un pedido nuevo: activas y por comenzar.
+  const OBRA_SELECCIONABLE = ["activa", "por_comenzar"];
+
   const ACCIONES = {
     creado:           "Pedido creado",
     enviado:          "Pedido enviado",
@@ -102,15 +111,63 @@ window.PO = window.PO || {};
     "Otro (ver nota)"
   ];
 
-  // Direcciones detectadas en el chat real de WhatsApp "Compras Skyterra"
-  // (2026-07-21, ~5.800 mensajes) — sugerencias para cargar obras reales
-  // rápido, con la nomenclatura que el equipo ya usa. Solo un atajo para
-  // completar el nombre; no crean nada hasta que se confirme "Agregar obra".
-  const SUGERENCIAS_OBRAS_CHAT = [
-    "Amarras 274", "Riberas 253", "Riberas 19", "Alcanfores 139",
-    "Amarras 267", "Villa del Haras", "Riberas 131", "Riberas 82",
-    "Amarras 442", "Riberas 84"
+  // Obras activas y por comenzar de la planilla real de Iván ("Caja y
+  // operación" / Ingresos SKY, columna CENTRO — 2026-07-28). Códigos tal
+  // cual, sin agregar nombres de barrio. Reemplaza la lista anterior
+  // (sacada del chat de WhatsApp, mucho menos precisa). Solo sugerencias:
+  // no crean nada hasta que se confirme "Agregar obra".
+  const SUGERENCIAS_OBRAS = [
+    { nombre: "AMA-267", estado: "activa" },
+    { nombre: "AMA-274", estado: "activa" },
+    { nombre: "AMA-355", estado: "activa" },
+    { nombre: "AMA-442", estado: "activa" },
+    { nombre: "ATA-433", estado: "activa" },
+    { nombre: "AYR-015", estado: "por_comenzar" },
+    { nombre: "CARPINCHOS", estado: "activa" },
+    { nombre: "CLUB MASCH", estado: "por_comenzar" },
+    { nombre: "GOL-015", estado: "activa" },
+    { nombre: "MAR-084", estado: "por_comenzar" },
+    { nombre: "MOL-781", estado: "activa" },
+    { nombre: "MUE-197", estado: "activa" },
+    { nombre: "NAT-281", estado: "por_comenzar" },
+    { nombre: "NAU-256", estado: "por_comenzar" },
+    { nombre: "ORI-136", estado: "por_comenzar" },
+    { nombre: "ORI-268", estado: "por_comenzar" },
+    { nombre: "PASEO HARAS", estado: "por_comenzar" },
+    { nombre: "PUE-131", estado: "activa" },
+    { nombre: "PUE-253", estado: "activa" },
+    { nombre: "PUE-306", estado: "activa" },
+    { nombre: "RAI-026", estado: "por_comenzar" },
+    { nombre: "RIB-082", estado: "activa" },
+    { nombre: "RIV-019", estado: "activa" },
+    { nombre: "SAN-114", estado: "activa" },
+    { nombre: "SOF-112", estado: "activa" },
+    { nombre: "ROB-572", estado: "activa" },
+    { nombre: "SIL-033", estado: "por_comenzar" },
+    { nombre: "SIL-172", estado: "por_comenzar" },
+    { nombre: "SMA-220", estado: "por_comenzar" },
+    { nombre: "SAN-1243", estado: "activa" }
   ];
+
+  // Un ejemplo real por rubro, con la nomenclatura tal cual la usa el
+  // equipo en el chat de WhatsApp "Compras Skyterra" (no inventados).
+  // Sirve de base para el autocompletado de materiales en Nuevo pedido
+  // mientras no haya historial propio todavía. Revestimiento no tiene
+  // ejemplo propio: en el chat solo aparece mezclado con Porcelanatos.
+  const MATERIALES_EJEMPLO = {
+    "Electricidad": "Cable unipolar 2,5mm² marrón y celeste",
+    "Sanitarios": "Canilla 1/2 plástica",
+    "Materiales gruesos (corralón)": "Ladrillo hueco común del 18",
+    "Hierros": "Hierro del 8",
+    "Pintura": "Látex mate blanco x 20 lts",
+    "Herrería": "Chapa trapezoidal",
+    "Maderas": "Fenólico 1,20x2,40 para obrador",
+    "Hormigones": "Hormigón elaborado H21",
+    "Volquetes": "Volquete (retiro/recambio)",
+    "Porcelanatos": "Pegamento para porcelanato Klaukol ultra flex",
+    "Fletes": "Flete a obra",
+    "Aberturas": "Contramarco 5cm"
+  };
 
   const MAX_BASE64 = 700 * 1024; // ~700 KB por archivo (límite de doc: 1 MB)
   const AUTOSAVE_KEY = "po-autosave-pedido";
@@ -557,7 +614,7 @@ window.PO = window.PO || {};
     sel.innerHTML = '<option value="todas">' + etiquetaTodas + "</option>" +
       estado.obras.map((o) =>
         '<option value="' + esc(o.id) + '">' + esc(o.nombre) +
-        (o.estado && o.estado !== "activa" ? " (" + o.estado + ")" : "") + "</option>"
+        (o.estado && o.estado !== "activa" ? " (" + (ESTADOS_OBRA[o.estado] || o.estado) + ")" : "") + "</option>"
       ).join("");
     sel.value = valor;
     if (sel.value !== valor) sel.value = "todas";
@@ -819,8 +876,9 @@ window.PO = window.PO || {};
 
     $("nuevo-titulo").textContent = editando ? "Editar borrador" : "Nuevo pedido";
 
-    // Obras: el director solo ve sus obras asignadas activas; admin, todas las activas.
-    const activas = estado.obras.filter((o) => o.estado === "activa");
+    // Obras: activas y por comenzar (se puede ir cargando el pedido antes
+    // de que arranque). Director ve solo las suyas asignadas; admin, todas.
+    const activas = estado.obras.filter((o) => OBRA_SELECCIONABLE.includes(o.estado));
     const disponibles = esAdmin() ? activas
       : activas.filter((o) => (o.directores || []).includes(estado.usuario.uid));
     $("pedido-obra").innerHTML = '<option value="">Elegí la obra…</option>' +
@@ -911,6 +969,12 @@ window.PO = window.PO || {};
       const d = (it.descripcion || "").trim();
       if (d) set.set(d.toLowerCase(), d);
     }));
+    // Sin historial propio todavía: al menos un ejemplo real del rubro
+    // elegido, para que el autocompletado no arranque vacío.
+    if (rubroSel && MATERIALES_EJEMPLO[rubroSel]) {
+      const ej = MATERIALES_EJEMPLO[rubroSel];
+      if (!set.has(ej.toLowerCase())) set.set(ej.toLowerCase(), ej);
+    }
     dl.innerHTML = Array.from(set.values()).sort().slice(0, 80)
       .map((d) => '<option value="' + esc(d) + '"></option>').join("");
   }
@@ -1708,23 +1772,25 @@ window.PO = window.PO || {};
       ? estado.obras.find((o) => o.id === estado.obraEditandoId) : null;
 
     const obrasExistentes = new Set(estado.obras.map((o) => (o.nombre || "").trim().toLowerCase()));
-    const sugerencias = SUGERENCIAS_OBRAS_CHAT.filter((s) => !obrasExistentes.has(s.toLowerCase()));
+    const sugerencias = SUGERENCIAS_OBRAS.filter((s) => !obrasExistentes.has(s.nombre.toLowerCase()));
 
     cont.innerHTML =
       '<div class="gestion-form"><h4>' + (editando ? "Editar obra" : "Nueva obra") + "</h4>" +
       (!editando && sugerencias.length
-        ? '<div class="campo"><span class="campo-titulo">Sugerencias del chat de compras</span>' +
+        ? '<div class="campo"><span class="campo-titulo">Obras activas y por comenzar (planilla)</span>' +
           '<div class="chips" id="chips-sugerencias-obra">' +
           sugerencias.map((s) =>
-            '<button type="button" class="chip" data-sugerencia="' + esc(s) + '">' + esc(s) + "</button>"
+            '<button type="button" class="chip" data-sugerencia="' + esc(s.nombre) +
+            '" data-sug-estado="' + esc(s.estado) + '">' + esc(s.nombre) +
+            ' <span class="chip-num">' + esc(ESTADOS_OBRA[s.estado]) + "</span></button>"
           ).join("") +
           "</div>" +
-          '<p class="nota-suave">Tocá una para precargar el nombre y completar dirección/cliente, o ' +
+          '<p class="nota-suave">Tocá una para precargar el nombre, o ' +
           '<button type="button" class="btn-link" id="btn-cargar-sugerencias-obra">cargalas todas de una</button> ' +
-          "(quedan activas, sin director asignado — se completan después).</p>" +
+          "(sin dirección/cliente/director todavía — se completan después).</p>" +
           "</div>"
         : "") +
-      '<label class="campo"><span>Nombre (ej: MOL-1047 · Casa Molina)</span>' +
+      '<label class="campo"><span>Nombre (código de la planilla, ej: AMA-274)</span>' +
       '<input class="input" id="obra-nombre" value="' + esc(editando ? editando.nombre : "") + '" /></label>' +
       '<label class="campo"><span>Dirección</span>' +
       '<input class="input" id="obra-direccion" value="' + esc(editando ? editando.direccion : "") + '" /></label>' +
@@ -1732,9 +1798,9 @@ window.PO = window.PO || {};
       '<input class="input" id="obra-cliente" value="' + esc(editando ? editando.cliente : "") + '" /></label>' +
       '<label class="campo"><span>Estado</span>' +
       '<select class="input" id="obra-estado">' +
-        ["activa", "pausada", "finalizada"].map((s) =>
+        Object.keys(ESTADOS_OBRA).map((s) =>
           '<option value="' + s + '"' + (editando && editando.estado === s ? " selected" : "") + ">" +
-          s.charAt(0).toUpperCase() + s.slice(1) + "</option>").join("") +
+          ESTADOS_OBRA[s] + "</option>").join("") +
       "</select></label>" +
       '<div class="campo"><span class="campo-titulo">Directores asignados</span>' +
       (directores.length
@@ -1757,10 +1823,11 @@ window.PO = window.PO || {};
         const nombres = (o.directores || [])
           .map((uid) => { const u = estado.usuarios.find((x) => x.uid === uid); return u ? u.nombre : null; })
           .filter(Boolean).join(", ");
-        return '<li class="gestion-item' + (o.estado !== "activa" ? " apagado" : "") + '">' +
+        return '<li class="gestion-item' +
+          (["pausada", "finalizada"].includes(o.estado) ? " apagado" : "") + '">' +
           "<div><div class='g-titulo'>" + esc(o.nombre) + "</div>" +
           "<div class='g-sub'>" + esc(o.direccion || "—") + " · " + esc(o.cliente || "—") +
-          " · " + esc(o.estado) + (nombres ? " · Dir.: " + esc(nombres) : "") + "</div></div>" +
+          " · " + esc(ESTADOS_OBRA[o.estado] || o.estado) + (nombres ? " · Dir.: " + esc(nombres) : "") + "</div></div>" +
           '<div class="g-acciones"><button type="button" class="btn btn-ghost btn-chico" data-editar="' +
           esc(o.id) + '">Editar</button></div></li>';
       }).join("") : '<li class="lista-vacia">Sin obras cargadas.</li>') +
@@ -1794,6 +1861,7 @@ window.PO = window.PO || {};
     cont.querySelectorAll("[data-sugerencia]").forEach((b) =>
       b.addEventListener("click", () => {
         $("obra-nombre").value = b.dataset.sugerencia;
+        $("obra-estado").value = b.dataset.sugEstado;
         $("obra-nombre").focus();
       })
     );
@@ -1801,9 +1869,9 @@ window.PO = window.PO || {};
     if (bCargarTodas) bCargarTodas.addEventListener("click", async () => {
       bCargarTodas.disabled = true;
       try {
-        for (const nombre of sugerencias) {
+        for (const s of sugerencias) {
           await PO.store.guardarObra(null, {
-            nombre, direccion: "", cliente: "", estado: "activa", directores: []
+            nombre: s.nombre, direccion: "", cliente: "", estado: s.estado, directores: []
           });
         }
         toast(sugerencias.length + " obra(s) cargada(s). Asignales director cuando corresponda.");
