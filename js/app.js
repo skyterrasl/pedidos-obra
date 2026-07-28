@@ -600,6 +600,36 @@ window.PO = window.PO || {};
         "</div>";
     }
 
+    // Pendientes por obra: de un vistazo, sin tener que ir obra por obra
+    // con el filtro de arriba. Solo tiene sentido con "todas las obras" y
+    // más de una obra con algo abierto (si no, es la misma info repetida).
+    if (estado.dash.obra === "todas") {
+      const porObra = {};
+      base.filter((p) => ABIERTOS.includes(p.estado)).forEach((p) => {
+        if (!porObra[p.obraId]) {
+          porObra[p.obraId] = { obraId: p.obraId, obraNombre: p.obraNombre, total: 0, atrasados: 0 };
+        }
+        porObra[p.obraId].total++;
+        if (esAtrasado(p)) porObra[p.obraId].atrasados++;
+      });
+      const filas = Object.values(porObra).sort((a, b) =>
+        (b.atrasados - a.atrasados) || (b.total - a.total));
+      if (filas.length > 1) {
+        html += '<div class="bloque"><h4>Pendientes por obra</h4>' +
+          filas.map((o) =>
+            '<button type="button" class="obra-resumen-fila" data-filtrar-obra="' + esc(o.obraId) + '">' +
+              "<span>" + esc(o.obraNombre) + "</span>" +
+              '<span class="obra-resumen-num">' + o.total +
+              (o.atrasados
+                ? ' <span class="obra-resumen-atrasado">' + o.atrasados +
+                  (o.atrasados > 1 ? " atrasados" : " atrasado") + "</span>"
+                : "") +
+              "</span></button>"
+          ).join("") +
+        "</div>";
+      }
+    }
+
     // Tarjetas resumen por estado
     html += '<div class="dash-grid">' +
       Object.keys(ESTADOS).map((k) => {
@@ -634,6 +664,14 @@ window.PO = window.PO || {};
         estado.filtros.estado = c.dataset.estado;
         estado.filtros.obra = estado.dash.obra;
         estado.filtros.rubro = estado.dash.rubro;
+        ir("listado");
+      })
+    );
+    cont.querySelectorAll("[data-filtrar-obra]").forEach((c) =>
+      c.addEventListener("click", () => {
+        estado.filtros.estado = "todos";
+        estado.filtros.obra = c.dataset.filtrarObra;
+        estado.filtros.rubro = "todos";
         ir("listado");
       })
     );

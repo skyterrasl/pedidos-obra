@@ -665,6 +665,31 @@ textarea.input { resize: vertical; }
   margin-bottom: 10px;
 }
 
+.obra-resumen-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 4px;
+  border: none;
+  border-bottom: 1px solid var(--borde);
+  background: transparent;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--texto);
+  text-align: left;
+  cursor: pointer;
+}
+.obra-resumen-fila:last-child { border-bottom: none; }
+.obra-resumen-num { font-weight: 700; white-space: nowrap; }
+.obra-resumen-atrasado {
+  color: var(--peligro);
+  font-weight: 700;
+  font-size: 12.5px;
+}
+
 .detalle-cab {
   display: flex;
   align-items: center;
