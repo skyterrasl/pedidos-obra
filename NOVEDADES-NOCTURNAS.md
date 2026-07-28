@@ -120,6 +120,6 @@ hace unos días) — no es un placeholder. Para probar esto tuve cuidado de solo
 interactuar con el DOM sin tocar ningún botón que dispare login, registro o escritura;
 sigo con ese cuidado el resto de la noche.
 
-**Commit:** `[se completa al pushear]`
+**Commit:** `4bb6c9b` — pusheado.
 
 ---
