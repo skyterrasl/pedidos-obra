@@ -155,18 +155,16 @@ window.PO = window.PO || {};
   // mientras no haya historial propio todavía. Revestimiento no tiene
   // ejemplo propio: en el chat solo aparece mezclado con Porcelanatos.
   const MATERIALES_EJEMPLO = {
-    "Electricidad": "Cable unipolar 2,5mm² marrón y celeste",
-    "Sanitarios": "Canilla 1/2 plástica",
-    "Materiales gruesos (corralón)": "Ladrillo hueco común del 18",
-    "Hierros": "Hierro del 8",
-    "Pintura": "Látex mate blanco x 20 lts",
-    "Herrería": "Chapa trapezoidal",
-    "Maderas": "Fenólico 1,20x2,40 para obrador",
-    "Hormigones": "Hormigón elaborado H21",
-    "Volquetes": "Volquete (retiro/recambio)",
-    "Porcelanatos": "Pegamento para porcelanato Klaukol ultra flex",
-    "Fletes": "Flete a obra",
-    "Aberturas": "Contramarco 5cm"
+    "ELECTRICIDAD": "Cable unipolar 2,5mm² marrón y celeste",
+    "SANITARIOS": "Canilla 1/2 plástica",
+    "PINTURA": "Látex mate blanco x 20 lts",
+    "HERRERIA": "Chapa trapezoidal",
+    "MADERAS": "Fenólico 1,20x2,40 para obrador",
+    "HORMIGONES": "Hormigón elaborado H21",
+    "VOLQUETES": "Volquete (retiro/recambio)",
+    "PORCELANATOS": "Pegamento para porcelanato Klaukol ultra flex",
+    "FLETES": "Flete a obra",
+    "ABERTURAS": "Contramarco 5cm"
   };
 
   const MAX_BASE64 = 700 * 1024; // ~700 KB por archivo (límite de doc: 1 MB)
@@ -645,7 +643,7 @@ window.PO = window.PO || {};
       if (esAdmin()) {
         html += '<div class="dash-vacio">La base está vacía.<br/><br/>' +
           '<button type="button" class="btn btn-primario" id="btn-seed">Cargar datos de ejemplo</button>' +
-          '<p class="nota-suave" style="margin-top:10px">3 obras, 6 rubros, 2 proveedores y 10 pedidos de muestra.<br/>' +
+          '<p class="nota-suave" style="margin-top:10px">3 obras, los rubros, 2 proveedores y 10 pedidos de muestra.<br/>' +
           'O empezá en serio desde la pestaña Gestión.</p></div>';
       } else {
         html += '<div class="dash-vacio">Todavía no hay obras ni pedidos cargados.<br/>' +
@@ -1895,7 +1893,7 @@ window.PO = window.PO || {};
     const faltantes = (window.APP_CONFIG.RUBROS_DEFAULT || [])
       .filter((n) => !yaCargados.has(n.toLowerCase()));
     cont.innerHTML =
-      '<p class="nota-suave" style="margin-bottom:10px">Un pedido pertenece a UN solo rubro: si una obra necesita electricidad y corralón, van dos pedidos.</p>' +
+      '<p class="nota-suave" style="margin-bottom:10px">Un pedido pertenece a UN solo rubro: si una obra necesita electricidad y sanitarios, van dos pedidos.</p>' +
       '<div class="fila-alta">' +
         '<input class="input" id="rubro-nuevo" placeholder="Nuevo rubro…" />' +
         '<button type="button" class="btn btn-primario" id="btn-agregar-rubro">Agregar</button>' +

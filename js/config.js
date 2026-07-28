@@ -37,55 +37,54 @@ window.APP_CONFIG = {
   /* Unidades sugeridas al cargar ítems (se puede escribir cualquier otra). */
   UNIDADES: ["un.", "m²", "m³", "kg", "bolsa", "pallet", "ml", "lts"],
 
-  /* Rubros que carga el botón "Cargar rubros por defecto" de
-     Gestión → Rubros (después se editan libremente desde ahí). */
+  /* Rubros de Sky Terra, tal cual los definió Iván (2026-07-28). Son EXACTAMENTE
+     estos: se sacaron "Materiales gruesos (corralón)" e "Hierros" que estaban
+     antes. Los carga el botón de Gestión → Rubros; después se editan desde ahí. */
   RUBROS_DEFAULT: [
-    "Electricidad",
-    "Sanitarios",
-    "Materiales gruesos (corralón)",
-    "Hierros",
-    "Pintura",
-    "Herrería",
-    "Maderas",
-    "Hormigones",
-    "Volquetes",
-    "Revestimiento",
-    "Porcelanatos",
-    "Fletes",
-    "Aberturas"
+    "MADERAS",
+    "ELECTRICIDAD",
+    "HERRERIA",
+    "SANITARIOS",
+    "HORMIGONES",
+    "VOLQUETES",
+    "PINTURA",
+    "REVESTIMIENTO",
+    "PORCELANATOS",
+    "FLETES",
+    "ABERTURAS"
   ],
 
   /* Proveedores sugeridos por rubro (los pasó Iván). Aparecen como chips en
      Gestión → Proveedores para precargar nombre + rubro rápido; no crean
      nada hasta confirmar "Agregar proveedor". */
   PROVEEDORES_SUGERIDOS: [
-    { nombre: "Newton", rubro: "Maderas" },
-    { nombre: "Aserradero Panamericano", rubro: "Maderas" },
-    { nombre: "Batezzatti", rubro: "Electricidad" },
-    { nombre: "Electro Norte", rubro: "Electricidad" },
-    { nombre: "Pelba", rubro: "Electricidad" },
-    { nombre: "Super Chapa", rubro: "Herrería" },
-    { nombre: "Mundo Hierro", rubro: "Herrería" },
-    { nombre: "Tubo Center", rubro: "Herrería" },
-    { nombre: "CMP", rubro: "Herrería" },
-    { nombre: "Sólido Herrajes", rubro: "Herrería" },
-    { nombre: "Sanitario del Este", rubro: "Sanitarios" },
-    { nombre: "Hokama", rubro: "Sanitarios" },
-    { nombre: "Konecta", rubro: "Sanitarios" },
-    { nombre: "Ombú", rubro: "Hormigones" },
-    { nombre: "Concret Vial", rubro: "Hormigones" },
-    { nombre: "Cavalsa", rubro: "Hormigones" },
-    { nombre: "Volquetes Nahuel", rubro: "Volquetes" },
-    { nombre: "La Nueva Norte", rubro: "Volquetes" },
-    { nombre: "El Mono", rubro: "Volquetes" },
-    { nombre: "Pinturería del Plata", rubro: "Pintura" },
-    { nombre: "Quintex", rubro: "Pintura" },
-    { nombre: "Revesco", rubro: "Revestimiento" },
-    { nombre: "Sebastián Gamarra", rubro: "Revestimiento" },
-    { nombre: "Tarquini", rubro: "Revestimiento" },
-    { nombre: "Protex", rubro: "Revestimiento" },
-    { nombre: "Megaporcelanatos", rubro: "Porcelanatos" },
-    { nombre: "Decomármol", rubro: "Porcelanatos" },
-    { nombre: "San Jerónimo", rubro: "Aberturas" }
+    { nombre: "Newton", rubro: "MADERAS" },
+    { nombre: "Aserradero Panamericano", rubro: "MADERAS" },
+    { nombre: "Batezzatti", rubro: "ELECTRICIDAD" },
+    { nombre: "Electro Norte", rubro: "ELECTRICIDAD" },
+    { nombre: "Pelba", rubro: "ELECTRICIDAD" },
+    { nombre: "Super Chapa", rubro: "HERRERIA" },
+    { nombre: "Mundo Hierro", rubro: "HERRERIA" },
+    { nombre: "Tubo Center", rubro: "HERRERIA" },
+    { nombre: "CMP", rubro: "HERRERIA" },
+    { nombre: "Sólido Herrajes", rubro: "HERRERIA" },
+    { nombre: "Sanitario del Este", rubro: "SANITARIOS" },
+    { nombre: "Hokama", rubro: "SANITARIOS" },
+    { nombre: "Konecta", rubro: "SANITARIOS" },
+    { nombre: "Ombú", rubro: "HORMIGONES" },
+    { nombre: "Concret Vial", rubro: "HORMIGONES" },
+    { nombre: "Cavalsa", rubro: "HORMIGONES" },
+    { nombre: "Volquetes Nahuel", rubro: "VOLQUETES" },
+    { nombre: "La Nueva Norte", rubro: "VOLQUETES" },
+    { nombre: "El Mono", rubro: "VOLQUETES" },
+    { nombre: "Pinturería del Plata", rubro: "PINTURA" },
+    { nombre: "Quintex", rubro: "PINTURA" },
+    { nombre: "Revesco", rubro: "REVESTIMIENTO" },
+    { nombre: "Sebastián Gamarra", rubro: "REVESTIMIENTO" },
+    { nombre: "Tarquini", rubro: "REVESTIMIENTO" },
+    { nombre: "Protex", rubro: "REVESTIMIENTO" },
+    { nombre: "Megaporcelanatos", rubro: "PORCELANATOS" },
+    { nombre: "Decomármol", rubro: "PORCELANATOS" },
+    { nombre: "San Jerónimo", rubro: "ABERTURAS" }
   ]
 };
