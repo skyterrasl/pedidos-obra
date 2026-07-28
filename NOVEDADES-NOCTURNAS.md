@@ -86,3 +86,40 @@ real) es el comportamiento de pantalla completa en iOS — eso solo se ve reinst
 **Commit:** `09e8ff6` — pusheado.
 
 ---
+
+## Ciclo 3 — Aviso de "sin conexión"
+
+**Qué se investigó:** patrones de offline-first 2026 para apps de campo. El hallazgo
+clave: *"un indicador sutil funciona mejor que un banner de alarma — un ícono chico de
+'sincronizando' o una etiqueta discreta de 'pendientes'; el estado de sincronización
+escondido es lo que rompe la confianza en la app"*. O sea: no hay que asustar, hay que
+avisar tranquilo que el trabajo está guardado.
+
+**Qué se encontró auditando:** la app ya tenía resuelta la parte difícil (persistencia
+offline de Firestore + autoguardado del formulario en localStorage), pero **no había
+ningún indicador visual** de que no hay señal. Si a un director se le corta la conexión
+en medio de un pedido, la app se veía exactamente igual que con señal — nada le avisaba
+que su pedido todavía no había salido, lo cual invita a mandarlo de nuevo por WhatsApp
+"por las dudas" (justo el problema que esta app viene a resolver).
+
+**Qué se hizo:** un banner angosto y calmo (color ámbar, no rojo de alarma) arriba de
+toda la pantalla que dice *"Sin conexión — lo que cargues se guarda y sincroniza solo
+apenas vuelva la señal"*, que aparece y desaparece solo escuchando los eventos
+`online`/`offline` del navegador. Es independiente de Firebase (se ve incluso en la
+pantalla de login), y no depende de tocar la base de datos para nada.
+
+**Verificación:** corté la señal de verdad con Playwright (`context.setOffline(true)`)
+sobre el `index.html` real — el banner aparece, capturas antes/durante/después
+confirman que no tapa ni desplaza mal ningún otro elemento (el header y las tarjetas se
+corren prolijo hacia abajo mientras está el aviso, y vuelven a su lugar solo al
+reconectar). Cero errores de consola en los tres estados.
+
+**Nota de seguridad para mí mismo (dejo constancia):** el `js/firebase-config.js` local
+de este proyecto tiene las credenciales REALES de producción pegadas (las cargó Iván
+hace unos días) — no es un placeholder. Para probar esto tuve cuidado de solo mirar/
+interactuar con el DOM sin tocar ningún botón que dispare login, registro o escritura;
+sigo con ese cuidado el resto de la noche.
+
+**Commit:** `[se completa al pushear]`
+
+---

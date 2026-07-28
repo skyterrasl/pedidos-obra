@@ -132,6 +132,27 @@ code {
 
 /* --------------------------------------------------------------- topbar --- */
 
+.offline-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  background: var(--alerta);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+  padding: calc(6px + env(safe-area-inset-top)) 12px 6px;
+}
+
+/* El banner es fixed (no ocupa espacio en el flujo): cuando está visible,
+   empuja el contenido y el header pegajoso para que no quede tapado. */
+body.hay-offline #pantalla-app,
+body.hay-offline #pantalla-auth,
+body.hay-offline #pantalla-config { margin-top: 32px; }
+body.hay-offline .topbar { top: 32px; }
+
 .topbar {
   position: sticky;
   top: 0;

@@ -258,10 +258,24 @@ window.PO = window.PO || {};
     window.scrollTo(0, 0);
   }
 
+  /* ------------------------------------------------------- conectividad --- */
+
+  /* Aviso calmo de "sin conexión" (independiente de Firebase: la data igual
+     se guarda local y sincroniza sola — esto solo evita que alguien piense
+     que la app "no anda" cuando en realidad no hay señal en la obra). */
+  function actualizarBannerConexion() {
+    const sinConexion = !navigator.onLine;
+    $("offline-banner").classList.toggle("oculto", !sinConexion);
+    document.body.classList.toggle("hay-offline", sinConexion);
+  }
+
   /* ----------------------------------------------------------- arranque --- */
 
   document.addEventListener("DOMContentLoaded", () => {
     conectarEventos();
+    actualizarBannerConexion();
+    window.addEventListener("online", actualizarBannerConexion);
+    window.addEventListener("offline", actualizarBannerConexion);
     if (!PO.fb.init()) { mostrarPantalla("config"); return; }
     PO.fb.auth.onAuthStateChanged(onAuth);
   });
