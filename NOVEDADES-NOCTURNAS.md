@@ -83,6 +83,6 @@ consola (0 errores). Lo que no se puede verificar con Playwright (es Chromium, n
 real) es el comportamiento de pantalla completa en iOS — eso solo se ve reinstalando el
 ícono en un iPhone de verdad.
 
-**Commit:** `[pendiente en este mismo ciclo]`
+**Commit:** `09e8ff6` — pusheado.
 
 ---
