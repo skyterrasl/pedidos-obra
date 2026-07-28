@@ -12,7 +12,7 @@ rules_version = '2';
 // - control: SOLO lectura (no puede escribir nada, en ninguna colección).
 // - director: crea pedidos solo en SUS obras asignadas; edita/borra solo sus
 //   borradores; registra recepciones en pedidos de sus obras; cancela solo
-//   sus propios pedidos. No puede poner "recibido" ni "pedido_proveedor".
+//   sus propios pedidos. No puede poner "pedido_proveedor".
 // - admin: gestiona obras, rubros, proveedores y usuarios; hace todas las
 //   transiciones. Nadie (ni el admin) cambia su PROPIO rol o activo.
 // ============================================================================
@@ -122,7 +122,7 @@ service cloud.firestore {
       // - director: (a) editar/enviar SU borrador, (b) recepciones en obras
       //   asignadas (resultado entrega_parcial/entregado), (c) cancelar SU
       //   pedido, (d) reclamar (NO cambia estado, solo agrega historial) en
-      //   obras asignadas. Nunca puede poner 'recibido' ni 'pedido_proveedor'.
+      //   obras asignadas. Nunca puede poner 'pedido_proveedor'.
       allow update: if esAdmin()
         || (esDirector() && (
              (resource.data.estado == 'borrador'

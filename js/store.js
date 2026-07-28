@@ -36,7 +36,7 @@ PO.store = {
       rol: datos.rol,
       activo: true,
       whatsapp: "",
-      avisos: { pedido_nuevo: true, recibido: true, pedido_proveedor: true, recepcion: true },
+      avisos: { pedido_nuevo: true, pedido_proveedor: true, recepcion: true },
       creado: PO.fb.tsServidor()
     });
   },
@@ -68,6 +68,13 @@ PO.store = {
     const col = PO.fb.db.collection("obras");
     if (id) await col.doc(id).update(datos);
     else await col.add(datos);
+  },
+
+  /** Borra una obra (solo admin, ver firestore.rules). Los pedidos que la
+      referenciaban conservan su obraNombre, así que el historial se sigue
+      leyendo. Para una obra que ya trabajó, preferir estado "finalizada". */
+  async borrarObra(id) {
+    await PO.fb.db.collection("obras").doc(id).delete();
   },
 
   /* ------------------------------------------------------------------ rubros */
@@ -249,8 +256,6 @@ PO.store = {
       case "enviado":
         return (pedido.prioridad === "urgente" ? "URGENTE · " : "") +
           "Nuevo pedido " + num + " · " + obra + " (" + pedido.rubro + ") de " + pedido.solicitanteNombre;
-      case "recibido":
-        return "Administración recibió tu pedido " + num + " · " + obra;
       case "pedido_proveedor":
         return num + " pedido a " + ((pedido.proveedor && pedido.proveedor.nombre) || "proveedor") +
           ((pedido.proveedor && pedido.proveedor.fechaEstimada) ? " · llega " + pedido.proveedor.fechaEstimada : "");
@@ -271,10 +276,10 @@ PO.store = {
       1) campana in-app (subcolección notificaciones de cada destinatario) y
       2) webhook de n8n (WhatsApp vía Evolution API) con los destinatarios ya
          filtrados por número cargado + preferencia activada.
-      Audiencia según la matriz de la spec:
+      Audiencia:
         enviado / entrega_parcial / entregado → todos los admins
-        recibido / pedido_proveedor           → el director del pedido
-        cancelado                             → la contraparte del que cancela
+        pedido_proveedor                      → el director del pedido
+        cancelado / reclamo                   → la contraparte del que actuó
       Fire-and-forget: no bloquea la UI, los errores solo se loguean. */
   async notificarTransicion(evento, pedido, actor) {
     try {
@@ -307,7 +312,6 @@ PO.store = {
       if (!url) return;
       const toggle = {
         enviado: "pedido_nuevo",
-        recibido: "recibido",
         pedido_proveedor: "pedido_proveedor",
         entrega_parcial: "recepcion",
         entregado: "recepcion"

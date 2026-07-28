@@ -76,14 +76,13 @@ window.PO = window.PO || {};
   const ESTADOS = {
     borrador:         "Borrador",
     enviado:          "Enviado",
-    recibido:         "Recibido",
     pedido_proveedor: "Pedido al proveedor",
     entrega_parcial:  "Entrega parcial",
     entregado:        "Entregado",
     cancelado:        "Cancelado"
   };
 
-  const ABIERTOS = ["enviado", "recibido", "pedido_proveedor", "entrega_parcial"];
+  const ABIERTOS = ["enviado", "pedido_proveedor", "entrega_parcial"];
 
   const ESTADOS_OBRA = {
     activa: "Activa",
@@ -97,11 +96,11 @@ window.PO = window.PO || {};
   const ACCIONES = {
     creado:           "Pedido creado",
     enviado:          "Pedido enviado",
-    recibido:         "Recibido por administración",
     pedido_proveedor: "Pedido al proveedor",
     recepcion:        "Recepción registrada",
     cancelado:        "Pedido cancelado",
-    reclamo:          "Reclamo enviado"
+    reclamo:          "Reclamo enviado",
+    recibido:         "Recibido por administración" // histórico: el paso se eliminó
   };
 
   const INCIDENCIAS = [
@@ -1373,10 +1372,9 @@ window.PO = window.PO || {};
       botones.push('<button type="button" class="btn btn-ghost" id="btn-editar-borrador">Editar borrador</button>');
       botones.push('<button type="button" class="btn btn-ghost" id="btn-borrar-borrador" style="color:var(--peligro)">Eliminar borrador</button>');
     }
-    if (soyAdmin && p.estado === "enviado") {
-      botones.push('<button type="button" class="btn btn-primario" id="btn-marcar-recibido">Marcar recibido</button>');
-    }
-    if (soyAdmin && p.estado === "recibido") {
+    // "recibido" queda contemplado solo por pedidos viejos que hayan quedado
+    // en ese estado: el paso se eliminó del circuito.
+    if (soyAdmin && ["enviado", "recibido"].includes(p.estado)) {
       botones.push('<button type="button" class="btn btn-primario" id="btn-pedir-proveedor">Pedir al proveedor</button>');
     }
     if ((soyAdmin || soyDirectorObra) && ["pedido_proveedor", "entrega_parcial"].includes(p.estado)) {
@@ -1405,7 +1403,6 @@ window.PO = window.PO || {};
         ir("listado");
       } catch (e) { toast("No se pudo eliminar: " + (e.message || e)); }
     });
-    on("btn-marcar-recibido", marcarRecibido);
     on("btn-pedir-proveedor", abrirModalProveedor);
     on("btn-recepcion", abrirModalRecepcion);
     on("btn-reclamar", async (e) => {
@@ -1461,24 +1458,6 @@ window.PO = window.PO || {};
       toast("Pedido " + numero + " enviado.");
     } catch (e) {
       toast("No se pudo enviar: " + (e.message || e));
-    }
-  }
-
-  async function marcarRecibido() {
-    const p = pedidoAbierto();
-    if (!p) return;
-    const u = estado.usuario;
-    try {
-      await PO.store.actualizarPedido(p.id, {
-        estado: "recibido",
-        historial: (p.historial || []).concat([{
-          accion: "recibido", usuarioNombre: u.nombre, ts: PO.fb.tsAhora(), nota: ""
-        }])
-      });
-      PO.store.notificarTransicion("recibido", { ...p, estado: "recibido" }, u);
-      toast("Pedido " + p.numero + " marcado como recibido.");
-    } catch (e) {
-      toast("No se pudo actualizar: " + (e.message || e));
     }
   }
 
@@ -1830,8 +1809,11 @@ window.PO = window.PO || {};
           "<div><div class='g-titulo'>" + esc(o.nombre) + "</div>" +
           "<div class='g-sub'>" + esc(o.direccion || "—") + " · " + esc(o.cliente || "—") +
           " · " + esc(ESTADOS_OBRA[o.estado] || o.estado) + (nombres ? " · Dir.: " + esc(nombres) : "") + "</div></div>" +
-          '<div class="g-acciones"><button type="button" class="btn btn-ghost btn-chico" data-editar="' +
-          esc(o.id) + '">Editar</button></div></li>';
+          '<div class="g-acciones">' +
+          '<button type="button" class="btn btn-ghost btn-chico" data-editar="' + esc(o.id) + '">Editar</button>' +
+          '<button type="button" class="btn btn-ghost btn-chico" style="color:var(--peligro)" data-borrar-obra="' +
+          esc(o.id) + '">Borrar</button>' +
+          "</div></li>";
       }).join("") : '<li class="lista-vacia">Sin obras cargadas.</li>') +
       "</ul>";
 
@@ -1859,6 +1841,26 @@ window.PO = window.PO || {};
     if (bCanc) bCanc.addEventListener("click", () => { estado.obraEditandoId = null; renderTabObras(); });
     cont.querySelectorAll("[data-editar]").forEach((b) =>
       b.addEventListener("click", () => { estado.obraEditandoId = b.dataset.editar; renderTabObras(); })
+    );
+    cont.querySelectorAll("[data-borrar-obra]").forEach((b) =>
+      b.addEventListener("click", async () => {
+        const o = estado.obras.find((x) => x.id === b.dataset.borrarObra);
+        if (!o) return;
+        const conPedidos = estado.pedidos.filter((p) => p.obraId === o.id).length;
+        const aviso = conPedidos
+          ? "\n\nOJO: la obra tiene " + conPedidos + " pedido(s). Se conservan en el " +
+            "historial con el nombre de la obra, pero dejan de estar asociados.\n" +
+            "Si la obra ya trabajó, conviene marcarla “Finalizada” en vez de borrarla."
+          : "";
+        if (!confirm("¿Borrar la obra “" + o.nombre + "”?" + aviso)) return;
+        try {
+          await PO.store.borrarObra(o.id);
+          toast("Obra borrada.");
+          renderTabObras();
+        } catch (e) {
+          toast("No se pudo borrar: " + (e.message || e));
+        }
+      })
     );
     cont.querySelectorAll("[data-sugerencia]").forEach((b) =>
       b.addEventListener("click", () => {
@@ -2130,7 +2132,7 @@ window.PO = window.PO || {};
     $("perfil-email").value = u.email || "";
     $("perfil-whatsapp").value = u.whatsapp || "";
     const avisos = u.avisos || {};
-    ["pedido_nuevo", "recibido", "pedido_proveedor", "recepcion"].forEach((k) => {
+    ["pedido_nuevo", "pedido_proveedor", "recepcion"].forEach((k) => {
       $("aviso-" + k).checked = avisos[k] !== false;
     });
     $("perfil-rol").textContent = "Rol: " + rolEtiqueta(u.rol) +
@@ -2145,7 +2147,7 @@ window.PO = window.PO || {};
     if (!nombre) { mostrarError("perfil-error", "El nombre no puede quedar vacío."); return; }
     const whatsapp = $("perfil-whatsapp").value.replace(/[^\d]/g, "");
     const avisos = {};
-    ["pedido_nuevo", "recibido", "pedido_proveedor", "recepcion"].forEach((k) => {
+    ["pedido_nuevo", "pedido_proveedor", "recepcion"].forEach((k) => {
       avisos[k] = $("aviso-" + k).checked;
     });
     $("btn-guardar-perfil").disabled = true;

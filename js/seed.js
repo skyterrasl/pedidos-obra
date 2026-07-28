@@ -113,8 +113,7 @@ PO.seed = {
               { descripcion: "Hierro del 6", cantidad: 120, unidad: "kg", recibido: 120 }],
       proveedor: { nombre: "Corralón Norte", fechaEstimada: fecha(-16), oc: "OC-1101",
         observaciones: null, usuarioNombre: yo, ts: ts(19) },
-      historial: [h(20, "creado", demo1.nombre), h(20, "enviado", demo1.nombre),
-        h(19, "recibido", yo), h(19, "pedido_proveedor", yo, "Proveedor: Corralón Norte · OC: OC-1101"),
+      historial: [h(20, "creado", demo1.nombre), h(20, "enviado", demo1.nombre), h(19, "pedido_proveedor", yo, "Proveedor: Corralón Norte · OC: OC-1101"),
         h(16, "recepcion", demo1.nombre, "Recepción completa.\nHierro del 8: +200 kg\nHierro del 6: +120 kg")]
     });
 
@@ -128,8 +127,7 @@ PO.seed = {
       items: [{ descripcion: "Látex interior blanco x 20 lts", cantidad: 6, unidad: "un.", recibido: 6 }],
       proveedor: { nombre: "Pinturería Central", fechaEstimada: fecha(-11), oc: null,
         observaciones: null, usuarioNombre: yo, ts: ts(14) },
-      historial: [h(15, "creado", demo2.nombre), h(15, "enviado", demo2.nombre),
-        h(14, "recibido", yo), h(14, "pedido_proveedor", yo, "Proveedor: Pinturería Central"),
+      historial: [h(15, "creado", demo2.nombre), h(15, "enviado", demo2.nombre), h(14, "pedido_proveedor", yo, "Proveedor: Pinturería Central"),
         h(11, "recepcion", demo2.nombre, "Recepción completa.\nLátex interior blanco x 20 lts: +6 un.")]
     });
 
@@ -161,7 +159,6 @@ PO.seed = {
       proveedor: { nombre: "Corralón Norte", fechaEstimada: fecha(2), oc: "OC-1188",
         observaciones: "Entrega en dos tandas", usuarioNombre: yo, ts: ts(7) },
       historial: [h(8, "creado", demo2.nombre), h(8, "enviado", demo2.nombre),
-        h(7, "recibido", yo),
         h(7, "pedido_proveedor", yo, "Proveedor: Corralón Norte · OC: OC-1188 · Entrega en dos tandas"),
         h(3, "recepcion", demo2.nombre, "Recepción parcial.\nPlaca de yeso 12,5 mm: +20 un. (va 20 de 60)\nIncidencia: Llegó dañado\nNota: 5 placas marcadas, las cambia el corralón"),
         h(1, "recepcion", demo2.nombre, "Recepción parcial.\nMasilla para juntas x 32 kg: +4 un. (va 4 de 4)")]
@@ -177,8 +174,7 @@ PO.seed = {
       items: [{ descripcion: "Malla sima 15x15 6 mm", cantidad: 25, unidad: "un.", recibido: 0 }],
       proveedor: { nombre: "Corralón Norte", fechaEstimada: fecha(-1), oc: null,
         observaciones: null, usuarioNombre: yo, ts: ts(6) },
-      historial: [h(7, "creado", demo1.nombre), h(7, "enviado", demo1.nombre),
-        h(6, "recibido", yo), h(6, "pedido_proveedor", yo, "Proveedor: Corralón Norte")]
+      historial: [h(7, "creado", demo1.nombre), h(7, "enviado", demo1.nombre), h(6, "pedido_proveedor", yo, "Proveedor: Corralón Norte")]
     });
 
     // P-0006 · pedido_proveedor en fecha
@@ -192,21 +188,20 @@ PO.seed = {
               { descripcion: "Caño corrugado 3/4", cantidad: 300, unidad: "ml", recibido: 0 }],
       proveedor: { nombre: "Electro Pilar SRL", fechaEstimada: fecha(3), oc: "OC-1204",
         observaciones: null, usuarioNombre: yo, ts: ts(3) },
-      historial: [h(4, "creado", demo1.nombre), h(4, "enviado", demo1.nombre),
-        h(3, "recibido", yo), h(3, "pedido_proveedor", yo, "Proveedor: Electro Pilar SRL · OC: OC-1204")]
+      historial: [h(4, "creado", demo1.nombre), h(4, "enviado", demo1.nombre), h(3, "pedido_proveedor", yo, "Proveedor: Electro Pilar SRL · OC: OC-1204")]
     });
 
-    // P-0007 · recibido
+    // P-0007 · enviado
     const p7 = nuevoRef();
     setPedido(p7, {
       numero: P(7), obraId: oMol.id, obraNombre: "MOL-1047 · Casa Molina",
       rubro: "SANITARIOS", solicitanteUid: demo2.uid, solicitanteNombre: demo2.nombre,
-      creado: ts(2), prioridad: "normal", fechaNecesaria: fecha(7), estado: "recibido",
+      creado: ts(2), prioridad: "normal", fechaNecesaria: fecha(7), estado: "enviado",
       observaciones: "",
       items: [{ descripcion: "Inodoro con mochila línea Bari", cantidad: 3, unidad: "un.", recibido: 0 },
               { descripcion: "Grifería monocomando cocina", cantidad: 1, unidad: "un.", recibido: 0 }],
       proveedor: null,
-      historial: [h(2, "creado", demo2.nombre), h(2, "enviado", demo2.nombre), h(1, "recibido", yo)]
+      historial: [h(2, "creado", demo2.nombre), h(2, "enviado", demo2.nombre)]
     });
 
     // P-0008 · enviado

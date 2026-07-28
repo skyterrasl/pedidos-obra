@@ -12,18 +12,24 @@
       "name": "Webhook aviso",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [260, 300]
+      "position": [
+        260,
+        300
+      ]
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// Recibe {evento, pedido, usuario, destinatarios:[{whatsapp,nombre}]} y arma\n// un item por destinatario con el texto del mensaje.\nconst first = $input.first().json;\nconst headers = first.headers || {};\nconst WEBHOOK_KEY = 'PEGAR_WEBHOOK_KEY';\nif ((headers['x-app-key'] || '') !== WEBHOOK_KEY) { return []; }\nconst body = first.body || {};\nconst p = body.pedido || {};\nconst dest = Array.isArray(body.destinatarios) ? body.destinatarios : [];\n\nconst TEXTOS = {\n  pedido_nuevo: `\\u{1F4CB} *Pedido nuevo ${p.numero || ''}* (${p.prioridad === 'urgente' ? '\\u{1F534} URGENTE' : 'normal'})\\nObra: ${p.obraNombre}\\nRubro: ${p.rubro}\\nPidi\\u00f3: ${body.usuario}`,\n  recibido: `\\u{1F440} Administraci\\u00f3n vio tu pedido *${p.numero}* (${p.obraNombre}).`,\n  pedido_proveedor: `\\u{1F6D2} Tu pedido *${p.numero}* (${p.obraNombre}) ya fue pedido al proveedor.\\nEntrega estimada: ${p.fechaEstimada || 's/d'}`,\n  entrega_parcial: `\\u{1F4E6} Recepci\\u00f3n PARCIAL registrada en *${p.numero}* (${p.obraNombre}) por ${body.usuario}.`,\n  entregado: `\\u2705 Pedido *${p.numero}* (${p.obraNombre}) recibido COMPLETO. Se cierra.`,\n  cancelado: `\\u274C Pedido *${p.numero}* (${p.obraNombre}) CANCELADO por ${body.usuario}.`,\n  reclamo: `\\u{1F6A8} *RECLAMO* de ${body.usuario} en *${p.numero}* (${p.obraNombre}) \\u2014 sigue sin llegar.`\n};\nconst texto = TEXTOS[body.evento] || `Novedad en pedido ${p.numero}: ${body.evento}`;\n\nconst out = [];\nfor (const d of dest) {\n  const num = String(d.whatsapp || '').replace(/[^0-9]/g, '');\n  if (!num) continue;\n  out.push({ json: { number: num, text: texto + '\\n\\nhttps://skyterrasl.github.io/pedidos-obra/' } });\n}\nreturn out;"
+        "jsCode": "// Recibe {evento, pedido, usuario, destinatarios:[{whatsapp,nombre}]} y arma\n// un item por destinatario con el texto del mensaje.\nconst first = $input.first().json;\nconst headers = first.headers || {};\nconst WEBHOOK_KEY = 'PEGAR_WEBHOOK_KEY';\nif ((headers['x-app-key'] || '') !== WEBHOOK_KEY) { return []; }\nconst body = first.body || {};\nconst p = body.pedido || {};\nconst dest = Array.isArray(body.destinatarios) ? body.destinatarios : [];\n\nconst TEXTOS = {\n  pedido_nuevo: `\\u{1F4CB} *Pedido nuevo ${p.numero || ''}* (${p.prioridad === 'urgente' ? '\\u{1F534} URGENTE' : 'normal'})\\nObra: ${p.obraNombre}\\nRubro: ${p.rubro}\\nPidi\\u00f3: ${body.usuario}`,\n  pedido_proveedor: `\\u{1F6D2} Tu pedido *${p.numero}* (${p.obraNombre}) ya fue pedido al proveedor.\\nEntrega estimada: ${p.fechaEstimada || 's/d'}`,\n  entrega_parcial: `\\u{1F4E6} Recepci\\u00f3n PARCIAL registrada en *${p.numero}* (${p.obraNombre}) por ${body.usuario}.`,\n  entregado: `\\u2705 Pedido *${p.numero}* (${p.obraNombre}) recibido COMPLETO. Se cierra.`,\n  cancelado: `\\u274C Pedido *${p.numero}* (${p.obraNombre}) CANCELADO por ${body.usuario}.`,\n  reclamo: `\\u{1F6A8} *RECLAMO* de ${body.usuario} en *${p.numero}* (${p.obraNombre}) \\u2014 sigue sin llegar.`\n};\nconst texto = TEXTOS[body.evento] || `Novedad en pedido ${p.numero}: ${body.evento}`;\n\nconst out = [];\nfor (const d of dest) {\n  const num = String(d.whatsapp || '').replace(/[^0-9]/g, '');\n  if (!num) continue;\n  out.push({ json: { number: num, text: texto + '\\n\\nhttps://skyterrasl.github.io/pedidos-obra/' } });\n}\nreturn out;"
       },
       "id": "armar-mensajes",
       "name": "Armar mensajes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 300]
+      "position": [
+        480,
+        300
+      ]
     },
     {
       "parameters": {
@@ -32,8 +38,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "PEGAR_EVOLUTION_APIKEY" },
-            { "name": "content-type", "value": "application/json" }
+            {
+              "name": "apikey",
+              "value": "PEGAR_EVOLUTION_APIKEY"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -45,13 +57,38 @@
       "name": "Enviar WhatsApp",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [700, 300]
+      "position": [
+        700,
+        300
+      ]
     }
   ],
   "connections": {
-    "Webhook aviso": { "main": [[{ "node": "Armar mensajes", "type": "main", "index": 0 }]] },
-    "Armar mensajes": { "main": [[{ "node": "Enviar WhatsApp", "type": "main", "index": 0 }]] }
+    "Webhook aviso": {
+      "main": [
+        [
+          {
+            "node": "Armar mensajes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar mensajes": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "active": false
 }
