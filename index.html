@@ -131,27 +131,30 @@
 
       <!-- ------------------------ VISTA: LISTADO ------------------------- -->
       <section class="vista oculto" id="vista-listado">
+        <!-- Filtros compactos: lo que se usa siempre (buscar y estado) queda
+             a la vista; el resto se despliega. Antes ocupaban media pantalla
+             y empujaban los pedidos fuera de vista. -->
         <div class="filtros">
-          <div class="chips" id="chips-estado"><!-- por JS --></div>
+          <input class="input buscador" type="search" id="buscador"
+            placeholder="Buscar material, número, obra o proveedor…" />
           <div class="filtros-fila">
-            <select class="input input-chico" id="filtro-obra"></select>
-            <select class="input input-chico" id="filtro-rubro"></select>
-            <select class="input input-chico" id="filtro-prioridad">
-              <option value="todas">Prioridad: todas</option>
+            <select class="input" id="filtro-estado"><!-- por JS --></select>
+            <button type="button" class="btn btn-ghost btn-filtros" id="btn-mas-filtros"
+              aria-expanded="false">Filtros</button>
+          </div>
+          <div class="filtros-extra oculto" id="filtros-extra">
+            <select class="input" id="filtro-obra"></select>
+            <select class="input" id="filtro-rubro"></select>
+            <select class="input" id="filtro-prioridad">
+              <option value="todas">Cualquier prioridad</option>
               <option value="normal">Normal</option>
               <option value="urgente">Urgente</option>
             </select>
-          </div>
-          <div class="filtros-fila">
-            <label class="filtro-fecha"><span>Desde</span>
-              <input class="input input-chico" type="date" id="filtro-desde" /></label>
-            <label class="filtro-fecha"><span>Hasta</span>
-              <input class="input input-chico" type="date" id="filtro-hasta" /></label>
-            <button class="btn btn-ghost btn-chico" id="btn-exportar">Exportar</button>
-          </div>
-          <div class="filtros-fila">
-            <input class="input buscador" type="search" id="buscador"
-              placeholder="Buscar por material, número, obra o proveedor…" />
+            <label class="campo"><span>Desde</span>
+              <input class="input" type="date" id="filtro-desde" /></label>
+            <label class="campo"><span>Hasta</span>
+              <input class="input" type="date" id="filtro-hasta" /></label>
+            <button type="button" class="btn btn-ghost btn-bloque" id="btn-exportar">Exportar a Excel</button>
           </div>
         </div>
 
@@ -189,7 +192,7 @@
             <input class="input" type="date" id="pedido-fecha" required />
           </label>
 
-          <div class="campo">
+          <div class="campo" id="bloque-entrega">
             <span class="campo-titulo">¿Cómo llega el material?</span>
             <div class="segmentado" id="seg-entrega-pedido">
               <button type="button" class="seg-btn activo" data-valor="obra">Lo envían a obra</button>
@@ -203,7 +206,52 @@
               placeholder="Nombre de quien va a retirar" />
           </label>
 
-          <div class="campo">
+          <!-- VOLQUETES: no se piden "materiales", se pide un servicio. -->
+          <div class="campo oculto" id="form-volquetes">
+            <span class="campo-titulo">¿Qué necesitás?</span>
+            <div class="segmentado" id="seg-volquete">
+              <button type="button" class="seg-btn activo" data-valor="pedido">Pedido</button>
+              <button type="button" class="seg-btn" data-valor="recambio">Recambio</button>
+              <button type="button" class="seg-btn" data-valor="retiro">Retiro</button>
+            </div>
+            <label class="campo" style="margin-top:14px">
+              <span>¿Cuántos?</span>
+              <input class="input" type="text" inputmode="numeric" id="volquete-cantidad" value="1" />
+            </label>
+          </div>
+
+          <!-- HORMIGONES: metros, tipo, bomba y dónde se llena. -->
+          <div class="campo oculto" id="form-hormigones">
+            <label class="campo">
+              <span>Metros cúbicos (m³)</span>
+              <input class="input" type="text" inputmode="decimal" id="horm-metros"
+                placeholder="Ej: 12" />
+            </label>
+            <label class="campo">
+              <span>Tipo</span>
+              <input class="input" type="text" id="horm-tipo" list="lista-hormigon"
+                placeholder="Ej: H21" />
+              <datalist id="lista-hormigon">
+                <option value="H8"></option><option value="H13"></option>
+                <option value="H17"></option><option value="H21"></option>
+                <option value="H25"></option><option value="H30"></option>
+              </datalist>
+            </label>
+            <div class="campo">
+              <span class="campo-titulo">¿Con bomba?</span>
+              <div class="segmentado" id="seg-bomba">
+                <button type="button" class="seg-btn activo" data-valor="si">Con bomba</button>
+                <button type="button" class="seg-btn" data-valor="no">Sin bomba</button>
+              </div>
+            </div>
+            <label class="campo" style="margin-bottom:0">
+              <span>¿Qué se llena?</span>
+              <input class="input" type="text" id="horm-lugar"
+                placeholder="Ej: platea, losa del primer piso, contrapiso…" />
+            </label>
+          </div>
+
+          <div class="campo" id="bloque-materiales">
             <span class="campo-titulo">Materiales</span>
             <div class="items-editor" id="items-editor"><!-- por JS --></div>
             <button type="button" class="btn btn-ghost btn-bloque" id="btn-agregar-item">+ Agregar material</button>

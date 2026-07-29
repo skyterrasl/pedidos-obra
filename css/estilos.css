@@ -463,7 +463,21 @@ select.input option { background: var(--bg-2); color: var(--text); }
 
 /* -------------------------------------------------------------- filtros --- */
 
-.filtros { margin-bottom: 12px; }
+.filtros { margin-bottom: 14px; }
+.filtros .buscador { margin-bottom: 8px; }
+.btn-filtros { flex: 0 0 auto; min-height: 48px; }
+.btn-filtros.activo { border-color: var(--text-2); color: var(--text); }
+.filtros-extra {
+  border: 1px solid var(--line);
+  border-radius: var(--radio);
+  background: var(--bg-2);
+  padding: 14px;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.filtros-extra .campo { margin-bottom: 0; }
 
 /* Los chips ENVUELVEN en varias filas en vez de scrollear de costado:
    con muchas obras/proveedores un carril horizontal se siente como que

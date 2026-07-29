@@ -449,6 +449,13 @@ window.PO = window.PO || {};
     $("dash-rubro").addEventListener("change", (e) => { estado.dash.rubro = e.target.value; renderDashboard(); });
 
     // Listado: filtros
+    $("filtro-estado").addEventListener("change", (e) => { estado.filtros.estado = e.target.value; renderListado(); });
+    $("btn-mas-filtros").addEventListener("click", () => {
+      const caja = $("filtros-extra");
+      const abierto = caja.classList.toggle("oculto") === false;
+      $("btn-mas-filtros").setAttribute("aria-expanded", String(abierto));
+      $("btn-mas-filtros").classList.toggle("activo", abierto);
+    });
     $("filtro-obra").addEventListener("change", (e) => { estado.filtros.obra = e.target.value; renderListado(); });
     $("filtro-rubro").addEventListener("change", (e) => { estado.filtros.rubro = e.target.value; renderListado(); });
     $("filtro-prioridad").addEventListener("change", (e) => { estado.filtros.prioridad = e.target.value; renderListado(); });
@@ -469,7 +476,17 @@ window.PO = window.PO || {};
     $("form-pedido").addEventListener("input", autoguardar);
     // Si cambia obra o rubro, la lista de materiales abierta ya no aplica.
     $("pedido-obra").addEventListener("change", cerrarPanelMateriales);
-    $("pedido-rubro").addEventListener("change", cerrarPanelMateriales);
+    $("pedido-rubro").addEventListener("change", () => {
+      cerrarPanelMateriales();
+      aplicarFormularioDeRubro();   // volquetes y hormigones tienen el suyo
+      autoguardar();
+    });
+    // Segmentados de los formularios por rubro
+    ["seg-volquete", "seg-bomba"].forEach((id) =>
+      $(id).querySelectorAll(".seg-btn").forEach((b) =>
+        b.addEventListener("click", () => { setSegmentado(id, b.dataset.valor); autoguardar(); })
+      )
+    );
     $("seg-prioridad").querySelectorAll(".seg-btn").forEach((b) =>
       b.addEventListener("click", () => {
         $("seg-prioridad").querySelectorAll(".seg-btn").forEach((x) => x.classList.remove("activo"));
@@ -798,26 +815,22 @@ window.PO = window.PO || {};
     return lista;
   }
 
-  function renderChips() {
+  /** Filtro de estado como desplegable con el conteo al lado. Antes eran 7
+      chips que en el celular ocupaban tres filas y empujaban los pedidos
+      fuera de pantalla (el detalle por estado ya está en el Inicio). */
+  function renderFiltroEstado() {
     const base = pedidosFiltradosBase();
     const conteo = {};
     base.forEach((p) => { conteo[p.estado] = (conteo[p.estado] || 0) + 1; });
 
-    const chips = [["todos", "Todos", base.length]]
+    const opciones = [["todos", "Todos los estados", base.length]]
       .concat(Object.keys(ESTADOS).map((k) => [k, ESTADOS[k], conteo[k] || 0]));
 
-    $("chips-estado").innerHTML = chips.map(([clave, etiqueta, num]) =>
-      '<button type="button" class="chip' + (estado.filtros.estado === clave ? " activo" : "") +
-      '" data-estado="' + clave + '">' + etiqueta +
-      ' <span class="chip-num">' + num + "</span></button>"
+    const sel = $("filtro-estado");
+    sel.innerHTML = opciones.map(([clave, etiqueta, num]) =>
+      '<option value="' + clave + '"' + (estado.filtros.estado === clave ? " selected" : "") + ">" +
+      esc(etiqueta) + " (" + num + ")</option>"
     ).join("");
-
-    $("chips-estado").querySelectorAll(".chip").forEach((ch) =>
-      ch.addEventListener("click", () => {
-        estado.filtros.estado = ch.dataset.estado;
-        renderListado();
-      })
-    );
   }
 
   function resumenItems(items) {
@@ -827,7 +840,7 @@ window.PO = window.PO || {};
   }
 
   function renderListado() {
-    renderChips();
+    renderFiltroEstado();
     opcionesObras($("filtro-obra"), estado.filtros.obra, "Todas las obras");
     opcionesRubros($("filtro-rubro"), estado.filtros.rubro, "Todos los rubros");
     $("filtro-prioridad").value = estado.filtros.prioridad;
@@ -907,6 +920,7 @@ window.PO = window.PO || {};
     setEntregaPedido("obra");
     $("pedido-autorizado").value = "";
     $("items-editor").innerHTML = "";
+    limpiarFormulariosDeRubro();
     mostrarError("pedido-error", "");
 
     if (!disponibles.length) {
@@ -927,22 +941,27 @@ window.PO = window.PO || {};
       setPrioridad(editando.prioridad || "normal");
       setEntregaPedido((editando.entrega && editando.entrega.tipo) || "obra");
       $("pedido-autorizado").value = (editando.entrega && editando.entrega.autorizado) || "";
-      (editando.items || []).forEach((it) => agregarFilaItem(it));
+      // Volquetes y hormigones se reconstruyen desde su formulario, no como
+      // filas de materiales (los ítems son solo el texto que generan).
+      if (!cargarDetalleRubro(editando.detalleRubro)) {
+        (editando.items || []).forEach((it) => agregarFilaItem(it));
+      }
       $("pedido-autosave").classList.add("oculto");
     } else if (estado.duplicarDe) {
       const d = estado.duplicarDe;
       estado.duplicarDe = null;
       $("pedido-obra").value = d.obraId || "";
       $("pedido-rubro").value = d.rubro || "";
-      (d.items || []).forEach((it) => agregarFilaItem(it));
+      if (!cargarDetalleRubro(d.detalleRubro)) {
+        (d.items || []).forEach((it) => agregarFilaItem(it));
+      }
       $("pedido-autosave").classList.remove("oculto");
       toast("Pedido duplicado: revisá cantidades y fecha, y envialo.");
     } else {
-      const guardado = restaurarAutosave();
-      if (!guardado) agregarFilaItem();
+      restaurarAutosave();
       $("pedido-autosave").classList.remove("oculto");
     }
-    if (!$("items-editor").children.length) agregarFilaItem();
+    aplicarFormularioDeRubro();
     cerrarPanelMateriales();
   }
 
@@ -954,6 +973,118 @@ window.PO = window.PO || {};
   function prioridadElegida() {
     const b = $("seg-prioridad").querySelector(".seg-btn.activo");
     return (b && b.dataset.valor) || "normal";
+  }
+
+  /* --- Rubros con formulario propio: no se piden "materiales" sueltos sino
+         los datos que realmente hacen falta para ese servicio. --- */
+
+  function tipoFormulario(rubro) {
+    const k = clave(rubro);
+    if (k === "volquetes") return "volquetes";
+    if (k === "hormigones" || k === "hormigon") return "hormigones";
+    return "materiales";
+  }
+
+  /** Muestra el formulario que corresponde al rubro elegido. */
+  function aplicarFormularioDeRubro() {
+    const tipo = tipoFormulario($("pedido-rubro").value);
+    $("form-volquetes").classList.toggle("oculto", tipo !== "volquetes");
+    $("form-hormigones").classList.toggle("oculto", tipo !== "hormigones");
+    $("bloque-materiales").classList.toggle("oculto", tipo !== "materiales");
+    // Un volquete o un camión de hormigón siempre van a la obra: no tiene
+    // sentido preguntar si lo retira alguien.
+    $("bloque-entrega").classList.toggle("oculto", tipo !== "materiales");
+    if (tipo !== "materiales") setEntregaPedido("obra");
+    if (tipo === "materiales" && !$("items-editor").children.length) agregarFilaItem();
+  }
+
+  function valorSegmentado(id, porDefecto) {
+    const b = $(id).querySelector(".seg-btn.activo");
+    return (b && b.dataset.valor) || porDefecto;
+  }
+
+  function setSegmentado(id, valor) {
+    $(id).querySelectorAll(".seg-btn").forEach((b) =>
+      b.classList.toggle("activo", b.dataset.valor === valor));
+  }
+
+  /** Arma el/los ítems del pedido según el rubro. Volquetes y hormigones
+      generan una línea legible, así el resto del circuito (recepciones,
+      % recibido, exportación) sigue funcionando igual que siempre. */
+  function leerItemsSegunRubro() {
+    const tipo = tipoFormulario($("pedido-rubro").value);
+
+    if (tipo === "volquetes") {
+      const accion = valorSegmentado("seg-volquete", "pedido");
+      const cant = parseCant($("volquete-cantidad").value) || 1;
+      const etiqueta = { pedido: "Pedido de volquete", recambio: "Recambio de volquete",
+                         retiro: "Retiro de volquete" }[accion];
+      return { items: [{ descripcion: etiqueta, cantidad: cant, unidad: "un.", recibido: 0 }],
+               extra: { tipo: "volquetes", accion, cantidad: cant } };
+    }
+
+    if (tipo === "hormigones") {
+      const metros = parseCant($("horm-metros").value);
+      const tipoH = $("horm-tipo").value.trim();
+      const bomba = valorSegmentado("seg-bomba", "si") === "si";
+      const lugar = $("horm-lugar").value.trim();
+      if (!metros || metros <= 0) return { error: "Poné cuántos metros cúbicos necesitás." };
+      if (!lugar) return { error: "Poné qué se llena (platea, losa, contrapiso…)." };
+      const desc = "Hormigón" + (tipoH ? " " + tipoH : "") +
+        (bomba ? " con bomba" : " sin bomba") + " — " + lugar;
+      return { items: [{ descripcion: desc, cantidad: metros, unidad: "m³", recibido: 0 }],
+               extra: { tipo: "hormigones", metrosCubicos: metros, tipoHormigon: tipoH || null,
+                        bomba, lugar } };
+    }
+
+    const res = leerItems();
+    return res.error ? res : { items: res.items, extra: null };
+  }
+
+  /** Lo cargado en el formulario del rubro, sin validar (para el autoguardado). */
+  function detalleRubroActual() {
+    const tipo = tipoFormulario($("pedido-rubro").value);
+    if (tipo === "volquetes") {
+      return { tipo, accion: valorSegmentado("seg-volquete", "pedido"),
+               cantidad: parseCant($("volquete-cantidad").value) || 1 };
+    }
+    if (tipo === "hormigones") {
+      const lugar = $("horm-lugar").value.trim();
+      const metros = parseCant($("horm-metros").value);
+      if (!lugar && !metros) return null;       // nada que recordar todavía
+      return { tipo, metrosCubicos: metros || null, tipoHormigon: $("horm-tipo").value.trim() || null,
+               bomba: valorSegmentado("seg-bomba", "si") === "si", lugar };
+    }
+    return null;
+  }
+
+  /** Deja los formularios por rubro como recién abiertos. */
+  function limpiarFormulariosDeRubro() {
+    setSegmentado("seg-volquete", "pedido");
+    $("volquete-cantidad").value = "1";
+    $("horm-metros").value = "";
+    $("horm-tipo").value = "";
+    setSegmentado("seg-bomba", "si");
+    $("horm-lugar").value = "";
+  }
+
+  /** Reconstruye el formulario del rubro con lo que ya se había cargado
+      (editar borrador, duplicar o recuperar el autoguardado). */
+  function cargarDetalleRubro(d) {
+    if (!d) return false;
+    if (d.tipo === "volquetes") {
+      setSegmentado("seg-volquete", d.accion || "pedido");
+      $("volquete-cantidad").value = d.cantidad || 1;
+      return true;
+    }
+    if (d.tipo === "hormigones") {
+      $("horm-metros").value = d.metrosCubicos || "";
+      $("horm-tipo").value = d.tipoHormigon || "";
+      setSegmentado("seg-bomba", d.bomba === false ? "no" : "si");
+      $("horm-lugar").value = d.lugar || "";
+      return true;
+    }
+    return false;
   }
 
   function setEntregaPedido(valor) {
@@ -1155,6 +1286,7 @@ window.PO = window.PO || {};
           entrega: leerEntrega(),
           fechaNecesaria: $("pedido-fecha").value,
           observaciones: $("pedido-obs").value,
+          detalleRubro: detalleRubroActual(),
           items: Array.from($("items-editor").children).map((f) => ({
             descripcion: f.querySelector(".it-desc").value,
             cantidad: f.querySelector(".it-cant").value,
@@ -1171,7 +1303,7 @@ window.PO = window.PO || {};
     try { datos = JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || "null"); } catch (e) {}
     if (!datos) return false;
     const tieneAlgo = (datos.items || []).some((i) => (i.descripcion || "").trim()) ||
-      datos.obraId || datos.observaciones;
+      datos.obraId || datos.observaciones || datos.detalleRubro;
     if (!tieneAlgo) return false;
     $("pedido-obra").value = datos.obraId || "";
     $("pedido-rubro").value = datos.rubro || "";
@@ -1180,6 +1312,10 @@ window.PO = window.PO || {};
     setPrioridad(datos.prioridad || "normal");
     setEntregaPedido((datos.entrega && datos.entrega.tipo) || "obra");
     $("pedido-autorizado").value = (datos.entrega && datos.entrega.autorizado) || "";
+    if (cargarDetalleRubro(datos.detalleRubro)) {
+      toast("Se recuperó un pedido que había quedado sin enviar.");
+      return true;
+    }
     (datos.items || []).forEach((i) => {
       if ((i.descripcion || "").trim() || (i.cantidad || "").trim()) {
         agregarFilaItem({ descripcion: i.descripcion, cantidad: parseCant(i.cantidad), unidad: i.unidad || "un." });
@@ -1214,7 +1350,7 @@ window.PO = window.PO || {};
       mostrarError("pedido-error", "Indicá para cuándo se necesita."); return;
     }
 
-    const res = leerItems();
+    const res = leerItemsSegunRubro();
     if (res.error) { mostrarError("pedido-error", res.error); return; }
 
     const ahora = PO.fb.tsAhora();
@@ -1229,6 +1365,7 @@ window.PO = window.PO || {};
           obraId, obraNombre: obra.nombre, rubro,
           prioridad: prioridadElegida(),
           entrega: leerEntrega(),
+          detalleRubro: res.extra || null,
           fechaNecesaria: fechaNecesaria || null,
           observaciones: $("pedido-obs").value.trim(),
           items: res.items
@@ -1265,6 +1402,7 @@ window.PO = window.PO || {};
         creado: PO.fb.tsServidor(),
         prioridad: prioridadElegida(),
         entrega: leerEntrega(),
+        detalleRubro: res.extra || null,
         fechaNecesaria: fechaNecesaria || null,
         estado: modo,
         observaciones: $("pedido-obs").value.trim(),
@@ -1455,8 +1593,11 @@ window.PO = window.PO || {};
         "</div>";
     }
 
-    /* Materiales */
-    html += '<div class="bloque"><h4>Materiales (' + pctRecibido(p) + '% recibido)</h4>' +
+    /* Materiales — volquetes y hormigones no piden "materiales", así que el
+       título del bloque acompaña al rubro. */
+    const tituloItems = { volquetes: "Pedido", hormigones: "Hormigón" }[tipoFormulario(p.rubro)]
+      || "Materiales";
+    html += '<div class="bloque"><h4>' + tituloItems + ' (' + pctRecibido(p) + '% recibido)</h4>' +
       (p.items || []).map((it) => {
         const completo = Number(it.recibido || 0) >= Number(it.cantidad);
         return '<div class="item-linea"><span>' + esc(it.descripcion) + "</span>" +
