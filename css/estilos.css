@@ -30,6 +30,18 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Nada empuja la pantalla al costado: el contenido lo escriben personas
+   (nombres de material, observaciones, obras) y un texto largo sin
+   espacios rompía el layout en el celular. */
+html, body { max-width: 100%; overflow-x: hidden; }
+.pedido-items, .pedido-obra, .pedido-rubro,
+.item-linea, .rec-items, .rec-nota, .t-nota, .g-titulo, .g-sub,
+.dato-valor, .a-linea1, .a-linea2, .obra-resumen-fila {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+}
+
 html { -webkit-text-size-adjust: 100%; }
 
 body {
@@ -628,41 +640,89 @@ textarea.input { resize: vertical; }
   gap: 8px;
   align-items: center;
 }
-/* Lista de materiales que se abre al tocar el campo (reemplaza al datalist,
-   que en el celular obliga a escribir a ciegas para ver algo). */
+/* Selector de materiales a PANTALLA COMPLETA. Inline no servía: entre el
+   teclado del celular y la barra de navegación, la lista quedaba aplastada
+   en dos renglones. Acá el buscador queda fijo arriba y la lista usa toda
+   la pantalla. */
 .mat-panel {
-  border: 1px solid var(--acento);
-  border-radius: 10px;
-  background: var(--tarjeta);
-  box-shadow: var(--sombra);
+  position: fixed;
+  inset: 0;
+  z-index: 300;            /* por encima del navbar (50) y de los modales (100) */
+  background: var(--fondo);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  margin-top: -2px;
+}
+.mat-cab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+  background: var(--acento);
+}
+.mat-cab .mat-buscador {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 16px;         /* 16px evita que iOS haga zoom al enfocar */
+  min-height: 48px;
+}
+.mat-cerrar {
+  flex: 0 0 auto;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 10px;
+  background: transparent;
+  color: #f2f5f3;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
 }
 .mat-lista {
-  max-height: 46vh;
+  flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 .mat-item {
   display: block;
   width: 100%;
-  min-height: 48px;
-  padding: 12px 14px;
+  min-height: 52px;
+  padding: 13px 16px;
   border: none;
   border-bottom: 1px solid var(--borde);
-  background: transparent;
+  background: var(--tarjeta);
   font-family: inherit;
   font-size: 15px;
+  line-height: 1.35;
   color: var(--texto);
   text-align: left;
   cursor: pointer;
+  /* Materiales con nombres larguísimos: que bajen de renglón, nunca que
+     empujen la pantalla para el costado. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
-.mat-item:last-child { border-bottom: none; }
 .mat-item:active { background: var(--acento-suave); }
 .mat-vacio {
-  padding: 12px 14px;
-  font-size: 13.5px;
+  padding: 14px 16px;
+  font-size: 14px;
   color: var(--texto-suave);
+  overflow-wrap: anywhere;
+}
+
+/* El campo de material abre el selector: se ve normal (no "deshabilitado")
+   aunque sea readonly, y el texto largo no empuja la pantalla al costado. */
+.it-desc[readonly] {
+  background: var(--tarjeta);
+  cursor: pointer;
+  text-overflow: ellipsis;
 }
 
 .item-quitar {

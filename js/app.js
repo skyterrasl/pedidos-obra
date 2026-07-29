@@ -1015,66 +1015,83 @@ window.PO = window.PO || {};
     return Array.from(set.values());
   }
 
-  /* --- Panel de materiales: se abre al tocar el campo y muestra la lista
-         completa del rubro. Reemplaza al datalist, que en el celular obliga
-         a escribir a ciegas antes de ver nada. --- */
+  /* --- Selector de materiales A PANTALLA COMPLETA. Inline no funcionaba en
+         el celular: entre el teclado y la barra de abajo, la lista quedaba
+         reducida a dos renglones. --- */
 
-  const MAX_PANEL = 60; // items visibles por vez (rendimiento en celulares)
+  const MAX_PANEL = 80; // items por tanda (rendimiento en celulares viejos)
 
   function cerrarPanelMateriales() {
     const p = document.querySelector(".mat-panel");
     if (p) p.remove();
+    document.body.style.overflow = "";
   }
 
   function abrirPanelMateriales(input) {
-    cerrarPanelMateriales();
+    if (document.querySelector(".mat-panel")) return; // ya está abierto
+
+    const rubroSel = $("pedido-rubro").value;
+    const todos = rubroSel ? materialesSugeridos() : [];
 
     const panel = document.createElement("div");
     panel.className = "mat-panel";
-    panel.innerHTML = '<div class="mat-lista"></div>';
+    panel.innerHTML =
+      '<div class="mat-cab">' +
+        '<input class="mat-buscador" type="text" autocomplete="off" ' +
+          'placeholder="Buscar material…" value="' + esc(input.value) + '" />' +
+        '<button type="button" class="mat-cerrar">Cerrar</button>' +
+      "</div>" +
+      '<div class="mat-lista"></div>';
+    document.body.appendChild(panel);
+    document.body.style.overflow = "hidden"; // que no scrollee el fondo
 
-    // Sin rubro elegido no hay lista posible: decirlo, en vez de no mostrar
-    // nada y que parezca que la app no anda.
-    if (!$("pedido-rubro").value) {
-      panel.querySelector(".mat-lista").innerHTML =
-        '<div class="mat-vacio">Elegí primero el rubro y acá te aparece la lista de materiales.</div>';
-      input.parentNode.insertBefore(panel, input.nextSibling);
-      return;
-    }
+    const buscador = panel.querySelector(".mat-buscador");
+    const lista = panel.querySelector(".mat-lista");
 
-    const todos = materialesSugeridos();
-    if (!todos.length) return;
-
-    input.parentNode.insertBefore(panel, input.nextSibling);
+    const elegir = (texto) => {
+      input.value = texto;
+      cerrarPanelMateriales();
+      const cant = input.closest(".item-fila").querySelector(".it-cant");
+      if (cant) cant.focus();
+      autoguardar();
+    };
 
     const pintar = () => {
-      const q = clave(input.value);
+      if (!rubroSel) {
+        lista.innerHTML =
+          '<div class="mat-vacio">Elegí primero el rubro y acá te aparece la lista de materiales.</div>';
+        return;
+      }
+      const q = clave(buscador.value);
       const filtrados = q ? todos.filter((m) => clave(m).includes(q)) : todos;
-      const lista = panel.querySelector(".mat-lista");
       if (!filtrados.length) {
-        lista.innerHTML = '<div class="mat-vacio">Sin coincidencias — podés escribirlo igual.</div>';
+        lista.innerHTML =
+          '<div class="mat-vacio">Sin coincidencias. Podés escribirlo a mano y tocar "Cerrar".</div>';
         return;
       }
       lista.innerHTML = filtrados.slice(0, MAX_PANEL)
         .map((m) => '<button type="button" class="mat-item">' + esc(m) + "</button>").join("") +
         (filtrados.length > MAX_PANEL
           ? '<div class="mat-vacio">+' + (filtrados.length - MAX_PANEL) +
-            " más — seguí escribiendo para achicar la lista.</div>"
+            " más — escribí para achicar la lista.</div>"
           : "");
       lista.querySelectorAll(".mat-item").forEach((b) =>
-        b.addEventListener("mousedown", (e) => {
-          e.preventDefault(); // no perder el foco antes de tomar el valor
-          input.value = b.textContent;
-          cerrarPanelMateriales();
-          const cant = input.closest(".item-fila").querySelector(".it-cant");
-          if (cant) cant.focus();
-          autoguardar();
-        })
+        b.addEventListener("click", () => elegir(b.textContent))
       );
     };
 
+    buscador.addEventListener("input", pintar);
+    // Enter: toma lo escrito tal cual (material que no está en la lista)
+    buscador.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); elegir(buscador.value.trim()); }
+    });
+    panel.querySelector(".mat-cerrar").addEventListener("click", () => {
+      const escrito = buscador.value.trim();
+      if (escrito) elegir(escrito); else cerrarPanelMateriales();
+    });
+
     pintar();
-    input._pintarPanel = pintar;
+    buscador.focus();
   }
 
   function agregarFilaItem(it) {
@@ -1095,14 +1112,14 @@ window.PO = window.PO || {};
       else toast("El pedido necesita al menos un material.");
     });
 
-    // Al tocar el campo se abre la lista del rubro; al escribir, se filtra.
+    // Al tocar el campo se abre el selector a pantalla completa (con su
+    // propio buscador). El campo en sí queda de solo lectura para que el
+    // teclado no tape la lista: se escribe adentro del selector.
     const desc = div.querySelector(".it-desc");
-    desc.addEventListener("focus", () => abrirPanelMateriales(desc));
-    desc.addEventListener("input", () => {
-      if (desc._pintarPanel && document.querySelector(".mat-panel")) desc._pintarPanel();
-      else abrirPanelMateriales(desc);
-    });
-    desc.addEventListener("blur", () => setTimeout(cerrarPanelMateriales, 120));
+    desc.setAttribute("readonly", "readonly");
+    const abrir = (e) => { e.preventDefault(); abrirPanelMateriales(desc); };
+    desc.addEventListener("focus", abrir);
+    desc.addEventListener("click", abrir);
 
     $("items-editor").appendChild(div);
   }
