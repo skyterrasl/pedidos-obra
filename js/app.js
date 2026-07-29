@@ -468,8 +468,9 @@ window.PO = window.PO || {};
     $("form-pedido").addEventListener("submit", (e) => { e.preventDefault(); guardarPedido("enviado"); });
     $("btn-guardar-borrador").addEventListener("click", () => guardarPedido("borrador"));
     $("form-pedido").addEventListener("input", autoguardar);
-    $("pedido-obra").addEventListener("change", actualizarSugerenciasMateriales);
-    $("pedido-rubro").addEventListener("change", actualizarSugerenciasMateriales);
+    // Si cambia obra o rubro, la lista de materiales abierta ya no aplica.
+    $("pedido-obra").addEventListener("change", cerrarPanelMateriales);
+    $("pedido-rubro").addEventListener("change", cerrarPanelMateriales);
     $("seg-prioridad").querySelectorAll(".seg-btn").forEach((b) =>
       b.addEventListener("click", () => {
         $("seg-prioridad").querySelectorAll(".seg-btn").forEach((x) => x.classList.remove("activo"));
@@ -931,8 +932,7 @@ window.PO = window.PO || {};
       $("pedido-autosave").classList.remove("oculto");
     }
     if (!$("items-editor").children.length) agregarFilaItem();
-
-    actualizarSugerenciasMateriales();
+    cerrarPanelMateriales();
   }
 
   function setPrioridad(valor) {
@@ -945,57 +945,102 @@ window.PO = window.PO || {};
     return (b && b.dataset.valor) || "normal";
   }
 
-  /** Sugerencias de materiales ya pedidos en la misma obra o rubro
-      (autocompletado del datalist; recorta el tipeo en obra). */
-  function actualizarSugerenciasMateriales() {
-    let dl = $("lista-materiales");
-    if (!dl) {
-      dl = document.createElement("datalist");
-      dl.id = "lista-materiales";
-      document.body.appendChild(dl);
-    }
+  /** Clave para comparar materiales y rubros: ignora mayúsculas, acentos y
+      puntuación (los rubros pueden estar cargados como "Materiales gruesos"
+      o "MATERIALES GRUESOS", y el catálogo trae "YESO 30 KG," y "YESO 30 KG."). */
+  function clave(s) {
+    return String(s || "").toLowerCase()
+      .normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[.,]/g, "").replace(/\s+/g, " ").trim();
+  }
+
+  /** Materiales sugeridos para el rubro/obra elegidos: primero los que ya se
+      pidieron antes (lo más probable), después el catálogo del rubro. */
+  function materialesSugeridos() {
     const obraSel = $("pedido-obra").value;
     const rubroSel = $("pedido-rubro").value;
+
     let fuente = pedidosVisibles();
     if (obraSel || rubroSel) {
       fuente = fuente.filter((p) =>
         (rubroSel && p.rubro === rubroSel) || (obraSel && p.obraId === obraSel));
     }
-    // 1) Lo ya pedido antes en esa obra/rubro va primero: es lo más probable.
     const set = new Map();
     fuente.forEach((p) => (p.items || []).forEach((it) => {
       const d = (it.descripcion || "").trim();
       if (d) set.set(clave(d), d);
     }));
 
-    // 2) Catálogo del rubro (listado de materiales de Sky Terra), si existe.
-    const catalogo = (window.MATERIALES_CATALOGO || {})[rubroSel] || [];
-    catalogo.forEach((m) => { if (!set.has(clave(m))) set.set(clave(m), m); });
+    // Catálogo: se busca sin distinguir mayúsculas/acentos, así funciona
+    // aunque el rubro esté cargado como "Materiales gruesos".
+    const cat = window.MATERIALES_CATALOGO || {};
+    const k = Object.keys(cat).find((r) => clave(r) === clave(rubroSel));
+    (k ? cat[k] : []).forEach((m) => { if (!set.has(clave(m))) set.set(clave(m), m); });
 
-    // 3) Si el rubro no tiene catálogo ni historial, al menos un ejemplo real.
-    if (!set.size && rubroSel && MATERIALES_EJEMPLO[rubroSel]) {
-      const ej = MATERIALES_EJEMPLO[rubroSel];
-      set.set(clave(ej), ej);
+    if (!set.size && rubroSel) {
+      const ejK = Object.keys(MATERIALES_EJEMPLO).find((r) => clave(r) === clave(rubroSel));
+      if (ejK) set.set(clave(MATERIALES_EJEMPLO[ejK]), MATERIALES_EJEMPLO[ejK]);
     }
-
-    // Sin .sort(): el orden ya es "primero lo tuyo, después el catálogo"
-    // (que viene alfabético). El navegador filtra a medida que se escribe.
-    dl.innerHTML = Array.from(set.values()).slice(0, 700)
-      .map((d) => '<option value="' + esc(d) + '"></option>').join("");
+    return Array.from(set.values());
   }
 
-  /** Clave para deduplicar materiales: ignora mayúsculas y puntuación
-      (el catálogo trae "YESO TUYANGO 30 KG," y "YESO TUYANGO 30 KG."). */
-  function clave(s) {
-    return s.toLowerCase().replace(/[.,]/g, "").replace(/\s+/g, " ").trim();
+  /* --- Panel de materiales: se abre al tocar el campo y muestra la lista
+         completa del rubro. Reemplaza al datalist, que en el celular obliga
+         a escribir a ciegas antes de ver nada. --- */
+
+  const MAX_PANEL = 60; // items visibles por vez (rendimiento en celulares)
+
+  function cerrarPanelMateriales() {
+    const p = document.querySelector(".mat-panel");
+    if (p) p.remove();
+  }
+
+  function abrirPanelMateriales(input) {
+    cerrarPanelMateriales();
+    const todos = materialesSugeridos();
+    if (!todos.length) return;
+
+    const panel = document.createElement("div");
+    panel.className = "mat-panel";
+    panel.innerHTML = '<div class="mat-lista"></div>';
+    input.parentNode.insertBefore(panel, input.nextSibling);
+
+    const pintar = () => {
+      const q = clave(input.value);
+      const filtrados = q ? todos.filter((m) => clave(m).includes(q)) : todos;
+      const lista = panel.querySelector(".mat-lista");
+      if (!filtrados.length) {
+        lista.innerHTML = '<div class="mat-vacio">Sin coincidencias — podés escribirlo igual.</div>';
+        return;
+      }
+      lista.innerHTML = filtrados.slice(0, MAX_PANEL)
+        .map((m) => '<button type="button" class="mat-item">' + esc(m) + "</button>").join("") +
+        (filtrados.length > MAX_PANEL
+          ? '<div class="mat-vacio">+' + (filtrados.length - MAX_PANEL) +
+            " más — seguí escribiendo para achicar la lista.</div>"
+          : "");
+      lista.querySelectorAll(".mat-item").forEach((b) =>
+        b.addEventListener("mousedown", (e) => {
+          e.preventDefault(); // no perder el foco antes de tomar el valor
+          input.value = b.textContent;
+          cerrarPanelMateriales();
+          const cant = input.closest(".item-fila").querySelector(".it-cant");
+          if (cant) cant.focus();
+          autoguardar();
+        })
+      );
+    };
+
+    pintar();
+    input._pintarPanel = pintar;
   }
 
   function agregarFilaItem(it) {
     const div = document.createElement("div");
     div.className = "item-fila";
     div.innerHTML =
-      '<input class="input it-desc" type="text" list="lista-materiales" ' +
-        'placeholder="Material (ej: Cemento CPC40 x 50 kg)" value="' + esc(it ? it.descripcion : "") + '" />' +
+      '<input class="input it-desc" type="text" autocomplete="off" ' +
+        'placeholder="Tocá para ver los materiales" value="' + esc(it ? it.descripcion : "") + '" />' +
       '<div class="item-fila-abajo">' +
         '<input class="input it-cant" type="text" inputmode="decimal" placeholder="Cantidad" value="' +
           (it && it.cantidad ? esc(fmtCant(it.cantidad)) : "") + '" />' +
@@ -1007,6 +1052,16 @@ window.PO = window.PO || {};
       if ($("items-editor").children.length > 1) { div.remove(); autoguardar(); }
       else toast("El pedido necesita al menos un material.");
     });
+
+    // Al tocar el campo se abre la lista del rubro; al escribir, se filtra.
+    const desc = div.querySelector(".it-desc");
+    desc.addEventListener("focus", () => abrirPanelMateriales(desc));
+    desc.addEventListener("input", () => {
+      if (desc._pintarPanel && document.querySelector(".mat-panel")) desc._pintarPanel();
+      else abrirPanelMateriales(desc);
+    });
+    desc.addEventListener("blur", () => setTimeout(cerrarPanelMateriales, 120));
+
     $("items-editor").appendChild(div);
   }
 

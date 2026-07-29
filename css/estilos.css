@@ -628,6 +628,43 @@ textarea.input { resize: vertical; }
   gap: 8px;
   align-items: center;
 }
+/* Lista de materiales que se abre al tocar el campo (reemplaza al datalist,
+   que en el celular obliga a escribir a ciegas para ver algo). */
+.mat-panel {
+  border: 1px solid var(--acento);
+  border-radius: 10px;
+  background: var(--tarjeta);
+  box-shadow: var(--sombra);
+  overflow: hidden;
+  margin-top: -2px;
+}
+.mat-lista {
+  max-height: 46vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.mat-item {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: none;
+  border-bottom: 1px solid var(--borde);
+  background: transparent;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--texto);
+  text-align: left;
+  cursor: pointer;
+}
+.mat-item:last-child { border-bottom: none; }
+.mat-item:active { background: var(--acento-suave); }
+.mat-vacio {
+  padding: 12px 14px;
+  font-size: 13.5px;
+  color: var(--texto-suave);
+}
+
 .item-quitar {
   border: none;
   background: transparent;

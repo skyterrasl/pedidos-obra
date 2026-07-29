@@ -12,7 +12,7 @@
    ¿Cambiaste archivos y no ves la novedad? Subí la versión (v1 → v2).
    ============================================================================ */
 
-const CACHE = "pedidos-obra-v18";
+const CACHE = "pedidos-obra-v19";
 
 const APP_SHELL = [
   "./",
