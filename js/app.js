@@ -162,7 +162,6 @@ window.PO = window.PO || {};
     "HORMIGONES": "Hormigón elaborado H21",
     "VOLQUETES": "Volquete (retiro/recambio)",
     "PORCELANATOS": "Pegamento para porcelanato Klaukol ultra flex",
-    "FLETES": "Flete a obra",
     "ABERTURAS": "Contramarco 5cm"
   };
 
@@ -478,6 +477,14 @@ window.PO = window.PO || {};
         autoguardar();
       })
     );
+    // Envío a obra vs. retiro: el campo del autorizado solo aparece si retiran.
+    $("seg-entrega-pedido").querySelectorAll(".seg-btn").forEach((b) =>
+      b.addEventListener("click", () => {
+        setEntregaPedido(b.dataset.valor);
+        autoguardar();
+      })
+    );
+    $("pedido-autorizado").addEventListener("input", autoguardar);
 
     // Detalle
     $("detalle-volver").addEventListener("click", () => ir("listado"));
@@ -897,6 +904,8 @@ window.PO = window.PO || {};
     $("pedido-fecha").min = hoyISO();
     $("pedido-obs").value = "";
     setPrioridad("normal");
+    setEntregaPedido("obra");
+    $("pedido-autorizado").value = "";
     $("items-editor").innerHTML = "";
     mostrarError("pedido-error", "");
 
@@ -916,6 +925,8 @@ window.PO = window.PO || {};
       $("pedido-fecha").value = editando.fechaNecesaria || "";
       $("pedido-obs").value = editando.observaciones || "";
       setPrioridad(editando.prioridad || "normal");
+      setEntregaPedido((editando.entrega && editando.entrega.tipo) || "obra");
+      $("pedido-autorizado").value = (editando.entrega && editando.entrega.autorizado) || "";
       (editando.items || []).forEach((it) => agregarFilaItem(it));
       $("pedido-autosave").classList.add("oculto");
     } else if (estado.duplicarDe) {
@@ -943,6 +954,26 @@ window.PO = window.PO || {};
   function prioridadElegida() {
     const b = $("seg-prioridad").querySelector(".seg-btn.activo");
     return (b && b.dataset.valor) || "normal";
+  }
+
+  function setEntregaPedido(valor) {
+    $("seg-entrega-pedido").querySelectorAll(".seg-btn").forEach((b) =>
+      b.classList.toggle("activo", b.dataset.valor === valor));
+    $("pedido-autorizado-wrap").classList.toggle("oculto", valor !== "retira");
+  }
+
+  function entregaElegida() {
+    const b = $("seg-entrega-pedido").querySelector(".seg-btn.activo");
+    return (b && b.dataset.valor) || "obra";
+  }
+
+  /** Cómo llega el material, tal como lo pidió el director. */
+  function leerEntrega() {
+    const tipo = entregaElegida();
+    return {
+      tipo,
+      autorizado: tipo === "retira" ? $("pedido-autorizado").value.trim() : ""
+    };
   }
 
   /** Clave para comparar materiales y rubros: ignora mayúsculas, acentos y
@@ -1104,6 +1135,7 @@ window.PO = window.PO || {};
           obraId: $("pedido-obra").value,
           rubro: $("pedido-rubro").value,
           prioridad: prioridadElegida(),
+          entrega: leerEntrega(),
           fechaNecesaria: $("pedido-fecha").value,
           observaciones: $("pedido-obs").value,
           items: Array.from($("items-editor").children).map((f) => ({
@@ -1129,6 +1161,8 @@ window.PO = window.PO || {};
     $("pedido-fecha").value = datos.fechaNecesaria || "";
     $("pedido-obs").value = datos.observaciones || "";
     setPrioridad(datos.prioridad || "normal");
+    setEntregaPedido((datos.entrega && datos.entrega.tipo) || "obra");
+    $("pedido-autorizado").value = (datos.entrega && datos.entrega.autorizado) || "";
     (datos.items || []).forEach((i) => {
       if ((i.descripcion || "").trim() || (i.cantidad || "").trim()) {
         agregarFilaItem({ descripcion: i.descripcion, cantidad: parseCant(i.cantidad), unidad: i.unidad || "un." });
@@ -1177,6 +1211,7 @@ window.PO = window.PO || {};
         const campos = {
           obraId, obraNombre: obra.nombre, rubro,
           prioridad: prioridadElegida(),
+          entrega: leerEntrega(),
           fechaNecesaria: fechaNecesaria || null,
           observaciones: $("pedido-obs").value.trim(),
           items: res.items
@@ -1212,6 +1247,7 @@ window.PO = window.PO || {};
         solicitanteNombre: u.nombre,
         creado: PO.fb.tsServidor(),
         prioridad: prioridadElegida(),
+        entrega: leerEntrega(),
         fechaNecesaria: fechaNecesaria || null,
         estado: modo,
         observaciones: $("pedido-obs").value.trim(),
@@ -1379,6 +1415,11 @@ window.PO = window.PO || {};
       dato("Creado", fmtTs(p.creado) + " (" + haceCuanto(p.creado) + ")") +
       dato("Se necesita para", (vencido ? "<span style='color:var(--peligro)'>" : "<span>") +
         fmtFecha(p.fechaNecesaria) + "</span>") +
+      // Cómo pidió el material el director (lo retira alguien o lo envían)
+      (p.entrega && p.entrega.tipo === "retira"
+        ? dato("Cómo llega", "<span style='color:var(--alerta)'>Lo retiran</span>" +
+            (p.entrega.autorizado ? " · autorizado: " + esc(p.entrega.autorizado) : ""))
+        : (p.entrega ? dato("Cómo llega", "Lo envían a obra") : "")) +
       (p.observaciones ? dato("Observaciones", esc(p.observaciones)) : "") +
       "</div>";
 
@@ -1551,10 +1592,13 @@ window.PO = window.PO || {};
     $("prov-fecha").value = "";
     $("prov-oc").value = "";
     $("prov-obs").value = "";
-    $("prov-retira").value = "";
+    // Precarga lo que pidió el director (retiro/envío + autorizado): admin
+    // solo confirma o ajusta, no lo vuelve a cargar.
+    const pidioRetiro = !!(p.entrega && p.entrega.tipo === "retira");
+    $("prov-retira").value = (p.entrega && p.entrega.autorizado) || "";
     $("seg-entrega").querySelectorAll(".seg-btn").forEach((b) =>
-      b.classList.toggle("activo", b.dataset.valor === "obra"));
-    $("prov-retira-wrap").classList.add("oculto");
+      b.classList.toggle("activo", b.dataset.valor === (pidioRetiro ? "retira" : "obra")));
+    $("prov-retira-wrap").classList.toggle("oculto", !pidioRetiro);
     $("prov-guardar-wrap").classList.add("oculto");
     $("prov-guardar").checked = true;
     // Datalist: primero los proveedores del rubro del pedido
@@ -1828,8 +1872,8 @@ window.PO = window.PO || {};
     const editando = estado.obraEditandoId
       ? estado.obras.find((o) => o.id === estado.obraEditandoId) : null;
 
-    const obrasExistentes = new Set(estado.obras.map((o) => (o.nombre || "").trim().toLowerCase()));
-    const sugerencias = SUGERENCIAS_OBRAS.filter((s) => !obrasExistentes.has(s.nombre.toLowerCase()));
+    const obrasExistentes = new Set(estado.obras.map((o) => clave(o.nombre)));
+    const sugerencias = SUGERENCIAS_OBRAS.filter((s) => !obrasExistentes.has(clave(s.nombre)));
 
     cont.innerHTML =
       '<div class="gestion-form"><h4>' + (editando ? "Editar obra" : "Nueva obra") + "</h4>" +
@@ -1971,9 +2015,10 @@ window.PO = window.PO || {};
 
   function renderTabRubros() {
     const cont = $("gestion-contenido");
-    const yaCargados = new Set(estado.rubros.map((r) => r.nombre.toLowerCase()));
+    // clave() ignora mayúsculas Y tildes: así "Herrería" y "HERRERIA" no se duplican.
+    const yaCargados = new Set(estado.rubros.map((r) => clave(r.nombre)));
     const faltantes = (window.APP_CONFIG.RUBROS_DEFAULT || [])
-      .filter((n) => !yaCargados.has(n.toLowerCase()));
+      .filter((n) => !yaCargados.has(clave(n)));
     cont.innerHTML =
       '<p class="nota-suave" style="margin-bottom:10px">Un pedido pertenece a UN solo rubro: si una obra necesita electricidad y sanitarios, van dos pedidos.</p>' +
       '<div class="fila-alta">' +
@@ -2048,9 +2093,9 @@ window.PO = window.PO || {};
     const cont = $("gestion-contenido");
     const editando = estado.proveedorEditandoId
       ? estado.proveedores.find((x) => x.id === estado.proveedorEditandoId) : null;
-    const yaCargados = new Set(estado.proveedores.map((x) => (x.nombre || "").toLowerCase()));
+    const yaCargados = new Set(estado.proveedores.map((x) => clave(x.nombre)));
     const sugProv = (window.APP_CONFIG.PROVEEDORES_SUGERIDOS || [])
-      .filter((s) => !yaCargados.has(s.nombre.toLowerCase()));
+      .filter((s) => !yaCargados.has(clave(s.nombre)));
 
     cont.innerHTML =
       '<div class="gestion-form"><h4>' + (editando ? "Editar proveedor" : "Nuevo proveedor") + "</h4>" +
@@ -2178,6 +2223,9 @@ window.PO = window.PO || {};
             '<button type="button" class="btn btn-ghost btn-chico usuario-activo" data-uid="' + esc(x.uid) +
             '" data-activo="' + (x.activo === false ? "0" : "1") + '"' + (soyYo ? " disabled" : "") + ">" +
             (x.activo === false ? "Activar" : "Desactivar") + "</button>" +
+            (soyYo ? "" :
+              '<button type="button" class="btn btn-ghost btn-chico usuario-borrar" style="color:var(--peligro)" ' +
+              'data-uid="' + esc(x.uid) + '">Borrar</button>') +
           "</div></li>";
       }).join("") : '<li class="lista-vacia">Cargando usuarios…</li>') +
       "</ul>";
@@ -2200,6 +2248,22 @@ window.PO = window.PO || {};
           await PO.store.actualizarUsuario(x.uid, { activo: activar });
           toast(activar ? "Usuario activado." : "Usuario desactivado.");
         } catch (e) { toast("No se pudo actualizar: " + (e.message || e)); }
+      })
+    );
+    cont.querySelectorAll(".usuario-borrar").forEach((b) =>
+      b.addEventListener("click", async () => {
+        const x = estado.usuarios.find((y) => y.uid === b.dataset.uid);
+        if (!x) return;
+        const pedidos = estado.pedidos.filter((p) => p.solicitanteUid === x.uid).length;
+        const aviso = pedidos
+          ? "\n\nOJO: hizo " + pedidos + " pedido(s). Quedan en el historial con su " +
+            "nombre, pero se pierde el perfil. Si trabajó de verdad, mejor desactivarlo."
+          : "";
+        if (!confirm("¿Borrar a " + x.nombre + "?" + aviso)) return;
+        try {
+          await PO.store.borrarUsuario(x.uid);
+          toast("Usuario borrado.");
+        } catch (e) { toast("No se pudo borrar: " + (e.message || e)); }
       })
     );
   }

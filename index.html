@@ -190,6 +190,20 @@
           </label>
 
           <div class="campo">
+            <span class="campo-titulo">¿Cómo llega el material?</span>
+            <div class="segmentado" id="seg-entrega-pedido">
+              <button type="button" class="seg-btn activo" data-valor="obra">Lo envían a obra</button>
+              <button type="button" class="seg-btn" data-valor="retira">Lo retiramos</button>
+            </div>
+          </div>
+
+          <label class="campo oculto" id="pedido-autorizado-wrap">
+            <span>¿Quién retira? (queda autorizado)</span>
+            <input class="input" type="text" id="pedido-autorizado"
+              placeholder="Nombre de quien va a retirar" />
+          </label>
+
+          <div class="campo">
             <span class="campo-titulo">Materiales</span>
             <div class="items-editor" id="items-editor"><!-- por JS --></div>
             <button type="button" class="btn btn-ghost btn-bloque" id="btn-agregar-item">+ Agregar material</button>

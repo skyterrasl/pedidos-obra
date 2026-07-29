@@ -53,6 +53,13 @@ PO.store = {
     await PO.fb.db.collection("usuarios").doc(uid).update(cambios);
   },
 
+  /** Borra el perfil de un usuario (solo admin, y nunca el propio). No borra
+      la cuenta de acceso en Firebase Auth: si esa persona vuelve a entrar,
+      se le crea un perfil nuevo con el código de invitación que use. */
+  async borrarUsuario(uid) {
+    await PO.fb.db.collection("usuarios").doc(uid).delete();
+  },
+
   /* ------------------------------------------------------------------- obras */
 
   subObras(cb) {

@@ -61,7 +61,11 @@ service cloud.firestore {
           && request.resource.data.activo == resource.data.activo)
         || (esAdmin() && request.auth.uid != uid);
 
-      allow delete: if false;
+      // El admin puede borrar a otro usuario (cuenta de prueba, alguien que
+      // se fue). Nunca a sí mismo, para no quedarse sin administrador. Ojo:
+      // para alguien que YA pidió cosas, conviene desactivarlo en vez de
+      // borrarlo — los pedidos guardan el nombre, pero se pierde el perfil.
+      allow delete: if esAdmin() && request.auth.uid != uid;
 
       // Notificaciones in-app (campana)
       match /notificaciones/{nid} {
