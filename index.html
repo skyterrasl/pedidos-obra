@@ -267,6 +267,7 @@
           <button type="submit" class="btn btn-primario btn-bloque" id="btn-guardar-perfil">Guardar perfil</button>
         </form>
         <p class="nota-suave perfil-rol" id="perfil-rol"></p>
+        <p class="nota-suave" id="perfil-version"></p>
       </section>
 
     </main>
@@ -419,9 +420,27 @@
        funciona igual en un subpath tipo /pedidos-obra/ de GitHub Pages. -->
   <script>
     if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () =>
-        navigator.serviceWorker.register("service-worker.js").catch(() => {})
-      );
+      // Auto-actualización: en obra nadie va a "cerrar y abrir dos veces"
+      // para ver una versión nueva. Cuando el Service Worker nuevo toma el
+      // control, se recarga sola. Lo que estuviera a medio cargar en el
+      // formulario de pedido está guardado en localStorage (autoguardado).
+      var recargando = false;
+      navigator.serviceWorker.addEventListener("controllerchange", function () {
+        if (recargando) return;
+        recargando = true;
+        location.reload();
+      });
+
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("service-worker.js").then(function (reg) {
+          reg.update();
+          // Al volver a la app (cambio de pestaña / desbloqueo del celular)
+          // se chequea si hay versión nueva.
+          document.addEventListener("visibilitychange", function () {
+            if (document.visibilityState === "visible") reg.update();
+          });
+        }).catch(function () {});
+      });
     }
   </script>
 </body>

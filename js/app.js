@@ -997,12 +997,23 @@ window.PO = window.PO || {};
 
   function abrirPanelMateriales(input) {
     cerrarPanelMateriales();
-    const todos = materialesSugeridos();
-    if (!todos.length) return;
 
     const panel = document.createElement("div");
     panel.className = "mat-panel";
     panel.innerHTML = '<div class="mat-lista"></div>';
+
+    // Sin rubro elegido no hay lista posible: decirlo, en vez de no mostrar
+    // nada y que parezca que la app no anda.
+    if (!$("pedido-rubro").value) {
+      panel.querySelector(".mat-lista").innerHTML =
+        '<div class="mat-vacio">Elegí primero el rubro y acá te aparece la lista de materiales.</div>';
+      input.parentNode.insertBefore(panel, input.nextSibling);
+      return;
+    }
+
+    const todos = materialesSugeridos();
+    if (!todos.length) return;
+
     input.parentNode.insertBefore(panel, input.nextSibling);
 
     const pintar = () => {
@@ -2206,6 +2217,13 @@ window.PO = window.PO || {};
     });
     $("perfil-rol").textContent = "Rol: " + rolEtiqueta(u.rol) +
       ". El rol lo administra administración.";
+    // Versión: sirve para saber si el celular quedó con una versión vieja
+    // cacheada (si acá dice una versión distinta a la última, hay que
+    // cerrar y volver a abrir la app).
+    $("perfil-version").textContent = "Versión " + ((window.APP_CONFIG || {}).VERSION || "?") +
+      " · " + (window.MATERIALES_CATALOGO
+        ? "catálogo de materiales cargado"
+        : "sin catálogo de materiales");
     mostrarError("perfil-error", "");
   }
 
