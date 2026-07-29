@@ -69,7 +69,7 @@
 html, body { max-width: 100%; overflow-x: hidden; }
 .pedido-items, .pedido-obra, .pedido-rubro,
 .item-linea, .rec-items, .rec-nota, .t-nota, .g-titulo, .g-sub,
-.dato-valor, .a-linea1, .a-linea2, .obra-resumen-fila {
+.dato-valor, .of-obra, .of-dir, .of-meta {
   overflow-wrap: anywhere;
   word-break: break-word;
   min-width: 0;
@@ -546,35 +546,41 @@ select.input option { background: var(--bg-2); color: var(--text); }
 
 /* -------------------------------------------------------------- dashboard - */
 
-.alerta-seccion { margin-bottom: 14px; }
-.alerta-titulo {
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 8px;
+/* Titulares: los tres numeros que se miran primero. Tocarlos abre el listado
+   ya filtrado, asi el tablero no es solo decorativo. */
+.titulares {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
 }
-.alerta-titulo.atrasados { color: var(--peligro); }
-
-.alerta-card {
+.titular {
   background: var(--tarjeta);
   border: 1px solid var(--borde);
-  border-left: 4px solid var(--peligro);
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin-bottom: 8px;
-  cursor: pointer;
+  border-top: 3px solid var(--borde);
+  border-radius: var(--radio);
   box-shadow: var(--sombra);
+  padding: 12px 8px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+  min-height: 76px;
 }
-.alerta-card .a-linea1 {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 14.5px;
-  font-weight: 700;
+.titular .t-num { font-size: 28px; font-weight: 700; line-height: 1.05; color: var(--texto); }
+.titular .t-etiqueta {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--texto-suave);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
 }
-.alerta-card .a-linea2 { font-size: 13px; color: var(--texto-suave); }
-.alerta-card .a-marca { font-size: 12px; font-weight: 700; color: var(--peligro); }
+.titular.t-peligro { border-top-color: var(--peligro); }
+.titular.t-peligro .t-num { color: var(--peligro); }
+.titular.t-alerta { border-top-color: var(--alerta); }
+.titular.t-alerta .t-num { color: var(--alerta); }
+.titular.t-cero .t-num { color: var(--texto-suave); }
 
 .dash-grid {
   display: grid;
@@ -869,30 +875,56 @@ select.input option { background: var(--bg-2); color: var(--text); }
   margin-bottom: 10px;
 }
 
-.obra-resumen-fila {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.bloque-alerta { border-left: 4px solid var(--peligro); }
+.bloque-alerta h4 { color: var(--peligro); }
+
+/* Una obra por fila: quien la conduce y que esta esperando. */
+.obra-fila {
+  display: block;
   width: 100%;
-  min-height: 44px;
-  padding: 10px 4px;
+  min-height: 56px;
+  padding: 11px 4px;
   border: none;
   border-bottom: 1px solid var(--borde);
   background: transparent;
   font-family: inherit;
-  font-size: 15px;
-  font-weight: 600;
   color: var(--texto);
   text-align: left;
   cursor: pointer;
 }
-.obra-resumen-fila:last-child { border-bottom: none; }
-.obra-resumen-num { font-weight: 700; white-space: nowrap; }
-.obra-resumen-atrasado {
+.obra-fila:last-child { border-bottom: none; }
+.obra-fila .of-cab {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.obra-fila .of-obra {
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.obra-fila .of-num { font-weight: 700; white-space: nowrap; }
+.obra-fila .of-marca {
   color: var(--peligro);
   font-weight: 700;
   font-size: 12.5px;
+  white-space: nowrap;
 }
+.obra-fila .of-dir {
+  font-size: 13px;
+  color: var(--texto);
+  font-weight: 500;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+.obra-fila .of-meta {
+  font-size: 12.5px;
+  color: var(--texto-suave);
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+.obra-fila .of-dias { color: var(--peligro); font-weight: 600; }
 
 .detalle-cab {
   display: flex;

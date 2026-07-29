@@ -265,6 +265,11 @@ window.PO = window.PO || {};
       ["pedido_proveedor", "entrega_parcial"].includes(p.estado));
   }
 
+  /** Ya comprado y todavía dentro de la fecha prometida. */
+  function enCamino(p) {
+    return ["pedido_proveedor", "entrega_parcial"].includes(p.estado) && !esAtrasado(p);
+  }
+
   function pctRecibido(p) {
     let total = 0, rec = 0;
     (p.items || []).forEach((it) => {
@@ -380,10 +385,13 @@ window.PO = window.PO || {};
       renderBadgeCampana();
       if (!$("modal-notificaciones").classList.contains("oculto")) renderNotificaciones();
     });
-    if (esAdmin()) {
+    // Admin y control ven todas las obras, así que en el tablero necesitan
+    // saber qué director está a cargo de cada una. El director ve solo las
+    // suyas y no le hace falta.
+    if (esAdmin() || esControl()) {
       estado.subs.usuarios = PO.store.subUsuarios((u) => {
         estado.usuarios = u;
-        if (estado.vista === "gestion") renderGestion();
+        refrescarVista();
       });
     }
 
@@ -667,48 +675,45 @@ window.PO = window.PO || {};
       }
     }
 
-    // Alertas: lo atrasado. La urgencia real la marca la fecha en que se
-    // necesita, no una etiqueta aparte.
+    // Los tres números que mueven la aguja. "Sin comprar" es el que suele
+    // doler: el pedido ya salió de la obra y todavía nadie lo compró.
     const atrasados = base.filter(esAtrasado);
+    const sinComprar = base.filter((p) => p.estado === "enviado");
+    const enCam = base.filter(enCamino);
 
-    if (atrasados.length) {
-      html += '<div class="alerta-seccion"><div class="alerta-titulo atrasados">Atrasados (' +
-        atrasados.length + ")</div>" +
-        atrasados.slice(0, 5).map((p) => alertaCard(p)).join("") +
+    if (base.length) {
+      html += '<div class="titulares">' +
+        titular("atrasados", atrasados.length, "Atrasados", "peligro") +
+        titular("enviado", sinComprar.length, "Sin comprar", sinComprar.length ? "alerta" : "") +
+        titular("en_camino", enCam.length, "En camino", "") +
         "</div>";
     }
 
-    // Pendientes por obra: de un vistazo, sin tener que ir obra por obra
-    // con el filtro de arriba. Solo tiene sentido con "todas las obras" y
-    // más de una obra con algo abierto (si no, es la misma info repetida).
+    // El corazón del tablero: qué obra está esperando y quién la conduce.
+    // Ordenado por lo que más duele (atrasos primero, y dentro de eso el
+    // atraso más viejo), así lo de arriba es siempre lo que hay que resolver.
     if (estado.dash.obra === "todas") {
-      const porObra = {};
-      base.filter((p) => ABIERTOS.includes(p.estado)).forEach((p) => {
-        if (!porObra[p.obraId]) {
-          porObra[p.obraId] = { obraId: p.obraId, obraNombre: p.obraNombre, total: 0, atrasados: 0 };
+      const filas = resumenPorObra(base);
+      if (filas.length) {
+        const conAtraso = filas.filter((o) => o.atrasados);
+        const alDia = filas.filter((o) => !o.atrasados);
+
+        if (conAtraso.length) {
+          html += '<div class="bloque bloque-alerta"><h4>Obras con pedidos atrasados</h4>' +
+            conAtraso.map(filaObra).join("") + "</div>";
         }
-        porObra[p.obraId].total++;
-        if (esAtrasado(p)) porObra[p.obraId].atrasados++;
-      });
-      const filas = Object.values(porObra).sort((a, b) =>
-        (b.atrasados - a.atrasados) || (b.total - a.total));
-      if (filas.length > 1) {
-        html += '<div class="bloque"><h4>Pendientes por obra</h4>' +
-          filas.map((o) =>
-            '<button type="button" class="obra-resumen-fila" data-filtrar-obra="' + esc(o.obraId) + '">' +
-              "<span>" + esc(o.obraNombre) + "</span>" +
-              '<span class="obra-resumen-num">' + o.total +
-              (o.atrasados
-                ? ' <span class="obra-resumen-atrasado">' + o.atrasados +
-                  (o.atrasados > 1 ? " atrasados" : " atrasado") + "</span>"
-                : "") +
-              "</span></button>"
-          ).join("") +
-        "</div>";
+        if (alDia.length) {
+          html += '<div class="bloque"><h4>' +
+            (conAtraso.length ? "Resto de las obras esperando" : "Obras esperando pedidos") +
+            "</h4>" + alDia.map(filaObra).join("") + "</div>";
+        }
+      } else {
+        html += '<div class="bloque"><h4>Obras esperando pedidos</h4>' +
+          '<p class="nota-suave" style="margin:0">Ninguna obra tiene pedidos pendientes.</p></div>';
       }
     }
 
-    // Tarjetas resumen por estado
+    // Detalle por estado: es el índice del listado, va al final.
     html += '<div class="dash-grid">' +
       Object.keys(ESTADOS).map((k) => {
         const n = base.filter((p) => p.estado === k).length;
@@ -747,23 +752,97 @@ window.PO = window.PO || {};
     );
     cont.querySelectorAll("[data-filtrar-obra]").forEach((c) =>
       c.addEventListener("click", () => {
-        estado.filtros.estado = "todos";
+        // Si la obra tiene atrasos, el listado abre directo en los atrasados.
+        estado.filtros.estado = c.classList.contains("con-atraso") ? "atrasados" : "todos";
         estado.filtros.obra = c.dataset.filtrarObra;
-        estado.filtros.rubro = "todos";
+        estado.filtros.rubro = estado.dash.rubro;
         ir("listado");
       })
     );
-    cont.querySelectorAll(".alerta-card").forEach((c) =>
-      c.addEventListener("click", () => abrirDetalle(c.dataset.id))
+    cont.querySelectorAll("[data-titular]").forEach((c) =>
+      c.addEventListener("click", () => {
+        const t = c.dataset.titular;
+        estado.filtros.estado = t;
+        estado.filtros.obra = estado.dash.obra;
+        estado.filtros.rubro = estado.dash.rubro;
+        ir("listado");
+      })
     );
   }
 
-  function alertaCard(p) {
-    return '<div class="alerta-card atrasado" data-id="' + esc(p.id) + '">' +
-      '<div class="a-linea1"><span>' + esc(p.numero || "Borrador") + " · " + esc(p.obraNombre) + "</span>" +
-      '<span class="a-marca">ATRASADO</span></div>' +
-      '<div class="a-linea2">' + esc(p.rubro) + " · llegaba el " +
-      fmtFecha(p.proveedor.fechaEstimada) + " · " + (ESTADOS[p.estado] || p.estado) + "</div></div>";
+  /* --- Piezas del tablero --- */
+
+  /** Número grande y accionable: al tocarlo se abre el listado ya filtrado. */
+  function titular(filtro, n, etiqueta, tono) {
+    return '<button type="button" class="titular' + (n && tono ? " t-" + tono : "") +
+      (n ? "" : " t-cero") + '" data-titular="' + filtro + '">' +
+      '<div class="t-num">' + n + "</div>" +
+      '<div class="t-etiqueta">' + etiqueta + "</div></button>";
+  }
+
+  /** Días que pasaron desde una fecha ISO (negativo si todavía no llegó). */
+  function diasDesde(iso) {
+    if (!iso) return 0;
+    const [a, m, d] = iso.split("-").map(Number);
+    const hoy = new Date();
+    return Math.round((new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()) -
+      new Date(a, m - 1, d)) / 86400000);
+  }
+
+  /** Nombres de los directores a cargo de una obra. Los pedidos guardan el
+      solicitante, pero el que responde por la obra es el director asignado. */
+  function directoresDeObra(obraId) {
+    const o = estado.obras.find((x) => x.id === obraId);
+    if (!o || !(o.directores || []).length) return "";
+    const nombres = o.directores.map((uid) => {
+      if (uid === estado.usuario.uid) return estado.usuario.nombre;
+      const u = estado.usuarios.find((x) => x.uid === uid);
+      return u ? u.nombre : null;
+    }).filter(Boolean);
+    return nombres.join(" y ");
+  }
+
+  /** Una fila por obra con pedidos abiertos, ordenadas por gravedad. */
+  function resumenPorObra(base) {
+    const m = {};
+    base.filter((p) => ABIERTOS.includes(p.estado)).forEach((p) => {
+      if (!m[p.obraId]) {
+        m[p.obraId] = { obraId: p.obraId, obraNombre: p.obraNombre,
+                        total: 0, atrasados: 0, peorAtraso: 0, porEstado: {} };
+      }
+      const o = m[p.obraId];
+      o.total++;
+      o.porEstado[p.estado] = (o.porEstado[p.estado] || 0) + 1;
+      if (esAtrasado(p)) {
+        o.atrasados++;
+        o.peorAtraso = Math.max(o.peorAtraso, diasDesde(p.proveedor.fechaEstimada));
+      }
+    });
+    return Object.values(m).sort((a, b) =>
+      (b.atrasados - a.atrasados) || (b.peorAtraso - a.peorAtraso) || (b.total - a.total));
+  }
+
+  function filaObra(o) {
+    const director = directoresDeObra(o.obraId);
+    const partes = [];
+    if (o.porEstado.enviado) partes.push(o.porEstado.enviado + " sin comprar");
+    if (o.porEstado.pedido_proveedor) partes.push(o.porEstado.pedido_proveedor + " en proveedor");
+    if (o.porEstado.entrega_parcial) partes.push(o.porEstado.entrega_parcial + " a medio entregar");
+
+    return '<button type="button" class="obra-fila' + (o.atrasados ? " con-atraso" : "") +
+      '" data-filtrar-obra="' + esc(o.obraId) + '">' +
+      '<div class="of-cab"><span class="of-obra">' + esc(o.obraNombre) + "</span>" +
+        (o.atrasados
+          ? '<span class="of-marca">' + o.atrasados + (o.atrasados > 1 ? " atrasados" : " atrasado") + "</span>"
+          : '<span class="of-num">' + o.total + "</span>") +
+      "</div>" +
+      (director ? '<div class="of-dir">' + esc(director) + "</div>" : "") +
+      '<div class="of-meta">' + partes.join(" · ") +
+        (o.peorAtraso > 0
+          ? ' · <span class="of-dias">' + (o.atrasados > 1 ? "el peor, " : "") + "hace " +
+            o.peorAtraso + (o.peorAtraso > 1 ? " días" : " día") + "</span>"
+          : "") +
+      "</div></button>";
   }
 
   /* -------------------------------------------------------------- listado - */
@@ -790,6 +869,12 @@ window.PO = window.PO || {};
 
   function pedidosFiltrados() {
     let lista = pedidosFiltradosBase();
+    // "atrasados" y "en camino" no son estados guardados: se calculan contra
+    // la fecha que prometió el proveedor. Van en el mismo selector porque son
+    // los tres números del tablero, y tocar uno tiene que abrir exactamente
+    // los pedidos que ese número cuenta.
+    if (estado.filtros.estado === "atrasados") return lista.filter(esAtrasado);
+    if (estado.filtros.estado === "en_camino") return lista.filter(enCamino);
     if (estado.filtros.estado !== "todos") {
       lista = lista.filter((p) => p.estado === estado.filtros.estado);
     }
@@ -804,7 +889,11 @@ window.PO = window.PO || {};
     const conteo = {};
     base.forEach((p) => { conteo[p.estado] = (conteo[p.estado] || 0) + 1; });
 
+    const nAtrasados = base.filter(esAtrasado).length;
+    const nEnCamino = base.filter(enCamino).length;
     const opciones = [["todos", "Todos los estados", base.length]]
+      .concat(nAtrasados ? [["atrasados", "⚠ Atrasados", nAtrasados]] : [])
+      .concat(nEnCamino ? [["en_camino", "En camino", nEnCamino]] : [])
       .concat(Object.keys(ESTADOS).map((k) => [k, ESTADOS[k], conteo[k] || 0]));
 
     const sel = $("filtro-estado");
