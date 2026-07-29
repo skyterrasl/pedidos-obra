@@ -1,31 +1,64 @@
 /* ============================================================================
    PEDIDOS DE OBRA · SKY TERRA — estilos.css
-   Mobile-first. Estética sobria: fondo claro, tipografía de sistema,
-   acento verde petróleo. Sin gradientes.
+   Mobile-first, siguiendo skyterra-tono-y-estilo.md: base oscura, plateado
+   como acento firma, azul del arco con moderación, Poppins como única
+   tipografía, líneas sólidas finas y cuerpo de 16px.
    ============================================================================ */
 
-:root {
-  --acento: #0e4f48;
-  --acento-oscuro: #0a3a35;
-  --acento-suave: #e3edeb;
-  --fondo: #f4f5f3;
-  --tarjeta: #ffffff;
-  --texto: #1d2523;
-  --texto-suave: #5f6a67;
-  --borde: #dfe4e1;
-  --peligro: #b3362c;
-  --alerta: #b45309;
-  --radio: 12px;
-  --sombra: 0 1px 3px rgba(20, 33, 30, 0.08);
+/* Poppins servida desde la propia app: en obra sin señal la tipografía de
+   marca se ve igual (40 KB, precacheada por el service worker). */
+@font-face { font-family: "Poppins"; font-style: normal; font-weight: 200;
+  font-display: swap; src: url("../assets/fuentes/poppins-200.woff2") format("woff2"); }
+@font-face { font-family: "Poppins"; font-style: normal; font-weight: 300;
+  font-display: swap; src: url("../assets/fuentes/poppins-300.woff2") format("woff2"); }
+@font-face { font-family: "Poppins"; font-style: normal; font-weight: 400;
+  font-display: swap; src: url("../assets/fuentes/poppins-400.woff2") format("woff2"); }
+@font-face { font-family: "Poppins"; font-style: normal; font-weight: 500;
+  font-display: swap; src: url("../assets/fuentes/poppins-500.woff2") format("woff2"); }
+@font-face { font-family: "Poppins"; font-style: normal; font-weight: 600;
+  font-display: swap; src: url("../assets/fuentes/poppins-600.woff2") format("woff2"); }
 
-  /* Colores de estado */
-  --e-borrador-bg: #eef0ee;        --e-borrador-tx: #5f6a67;
-  --e-enviado-bg: #fdf0d7;         --e-enviado-tx: #92600a;
-  --e-recibido-bg: #dff0f3;        --e-recibido-tx: #0f6a7a;
-  --e-proveedor-bg: #dde9fb;       --e-proveedor-tx: #1d54b0;
-  --e-parcial-bg: #ebe4fa;         --e-parcial-tx: #5d34ad;
-  --e-entregado-bg: #ddf1e0;       --e-entregado-tx: #1d6f38;
-  --e-cancelado-bg: #e8eae8;       --e-cancelado-tx: #566058;
+:root {
+  /* --- Tokens de marca (skyterra-tono-y-estilo.md) --- */
+  --bg: #0d0d0d;
+  --bg-2: #141414;
+  --bg-input: #161616;
+  --text: #f7f5f0;
+  --text-2: #c3c9ce;          /* PLATEADO: el acento firma */
+  --text-3: #8a8f94;
+  --accent: #3764b1;          /* azul del arco */
+  --accent-bright: #4478c8;
+  --line: rgba(195, 201, 206, 0.14);
+  --line-strong: rgba(195, 201, 206, 0.28);
+  --cta-bg: #f7f5f0;
+  --cta-text: #0b0b0b;
+  --ok: #4ba36a;
+  --warn: #d1a24a;
+  --err: #d05a5a;
+
+  /* --- Alias que usa el resto de la hoja (mapeados a los tokens) --- */
+  --acento: var(--accent);
+  --acento-oscuro: var(--accent-bright);
+  --acento-suave: rgba(55, 100, 177, 0.18);
+  --fondo: var(--bg);
+  --tarjeta: var(--bg-2);
+  --texto: var(--text);
+  --texto-suave: var(--text-2);
+  --borde: var(--line);
+  --peligro: var(--err);
+  --alerta: var(--warn);
+  --radio: 10px;
+  --sombra: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+
+  /* Estados: sobre fondo oscuro, con el color en el texto y un velo tenue
+     detrás (nada de pasteles claros, que en dark se ven como manchas). */
+  --e-borrador-bg: rgba(195, 201, 206, 0.10);  --e-borrador-tx: #c3c9ce;
+  --e-enviado-bg: rgba(209, 162, 74, 0.16);    --e-enviado-tx: #e0b969;
+  --e-recibido-bg: rgba(90, 170, 190, 0.16);   --e-recibido-tx: #7fc3d4;
+  --e-proveedor-bg: rgba(55, 100, 177, 0.22);  --e-proveedor-tx: #8fb2e6;
+  --e-parcial-bg: rgba(140, 110, 200, 0.20);   --e-parcial-tx: #b9a3ea;
+  --e-entregado-bg: rgba(75, 163, 106, 0.18);  --e-entregado-tx: #7fcb98;
+  --e-cancelado-bg: rgba(195, 201, 206, 0.08); --e-cancelado-tx: #8a8f94;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -45,7 +78,8 @@ html, body { max-width: 100%; overflow-x: hidden; }
 html { -webkit-text-size-adjust: 100%; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: "Poppins", system-ui, sans-serif;
+  font-weight: 300;
   background: var(--fondo);
   color: var(--texto);
   font-size: 16px;
@@ -98,12 +132,12 @@ code {
 .logo-mini {
   width: 52px;
   height: 52px;
-  border-radius: 12px;
-  background: var(--acento);
-  color: #f2f5f3;
-  font-weight: 700;
-  font-size: 21px;
-  letter-spacing: 0.5px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--text);
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: 0.08em;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -128,12 +162,12 @@ code {
   font-size: 14.5px;
   color: var(--texto-suave);
 }
-.auth-alternativa a { color: var(--acento); font-weight: 600; text-decoration: none; }
+.auth-alternativa a { color: var(--text-2); font-weight: 400; text-decoration: underline; text-underline-offset: 3px; }
 
 .btn-link {
   border: none;
   background: transparent;
-  color: var(--acento);
+  color: var(--text-2);
   font-weight: 600;
   font-family: inherit;
   font-size: inherit;
@@ -151,7 +185,7 @@ code {
   right: 0;
   z-index: 60;
   background: var(--alerta);
-  color: #fff;
+  color: var(--text);
   font-size: 12.5px;
   font-weight: 600;
   text-align: center;
@@ -169,8 +203,9 @@ body.hay-offline .topbar { top: 32px; }
   position: sticky;
   top: 0;
   z-index: 50;
-  background: var(--acento);
-  color: #f2f5f3;
+  background: var(--bg-2);
+  color: var(--text);
+  border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -186,16 +221,16 @@ body.hay-offline .topbar { top: 32px; }
 .topbar-derecha { display: flex; align-items: center; gap: 8px; }
 
 .topbar .btn-ghost {
-  color: #f2f5f3;
-  border-color: rgba(255, 255, 255, 0.35);
+  color: var(--text);
+  border-color: var(--line-strong);
   background: transparent;
 }
 
 .btn-campana {
   position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 1px solid var(--line-strong);
   background: transparent;
-  color: #f2f5f3;
+  color: var(--text);
   border-radius: 10px;
   width: 48px;
   height: 48px;
@@ -211,8 +246,8 @@ body.hay-offline .topbar { top: 32px; }
   min-width: 19px;
   height: 19px;
   border-radius: 999px;
-  background: #d9822b;
-  color: #fff;
+  background: var(--warn);
+  color: var(--text);
   font-size: 11.5px;
   font-weight: 700;
   display: flex;
@@ -264,7 +299,15 @@ body.hay-offline .topbar { top: 32px; }
 }
 .btn:disabled { opacity: 0.55; cursor: default; }
 
-.btn-primario { background: var(--acento); color: #f2f5f3; }
+.btn-primario {
+  background: var(--cta-bg);
+  color: var(--cta-text);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  font-size: 13px;
+  border-radius: 4px;
+}
 .btn-primario:active { background: var(--acento-oscuro); }
 
 .btn-ghost {
@@ -273,7 +316,7 @@ body.hay-offline .topbar { top: 32px; }
   border: 1px solid var(--borde);
 }
 
-.btn-peligro { background: var(--peligro); color: #fff; }
+.btn-peligro { background: var(--peligro); color: #0b0b0b; font-weight: 600; }
 
 .btn-bloque { display: block; width: 100%; margin-top: 6px; }
 .btn-chico { padding: 7px 12px; font-size: 13.5px; border-radius: 8px; }
@@ -286,18 +329,22 @@ body.hay-offline .topbar { top: 32px; }
   right: 16px;
   bottom: calc(74px + env(safe-area-inset-bottom));
   z-index: 40;
-  background: var(--acento);
-  color: #f2f5f3;
+  /* Acción principal de la app: botón crema del sistema (guía §5). */
+  background: var(--cta-bg);
+  color: var(--cta-text);
   border: none;
-  border-radius: 999px;
-  padding: 14px 20px;
-  font-size: 15.5px;
-  font-weight: 700;
+  border-radius: 4px;
+  padding: 15px 24px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   font-family: inherit;
-  box-shadow: 0 4px 14px rgba(14, 79, 72, 0.35);
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.8);
   cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.btn-flotante:active { background: var(--acento-oscuro); }
+.btn-flotante:active { transform: translateY(1px); }
 
 /* ----------------------------------------------------------------- navbar - */
 
@@ -330,36 +377,54 @@ body.hay-offline .topbar { top: 32px; }
 
 /* ------------------------------------------------------------- formularios  */
 
-.campo { display: block; margin-bottom: 14px; }
+.campo { display: block; margin-bottom: 16px; }
+/* Labels: mayúsculas con tracking, plateado (guía §3 "Label / kicker"). */
 .campo > span, .campo-titulo {
   display: block;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--texto-suave);
-  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-2);
+  margin-bottom: 7px;
 }
 
 .input {
   width: 100%;
-  border: 1px solid var(--borde);
-  border-radius: 10px;
-  background: var(--tarjeta);
-  color: var(--texto);
-  font-size: 16px;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 16px;          /* nunca menos: evita el zoom de iOS */
   font-family: inherit;
-  padding: 11px 12px;
+  font-weight: 300;
+  padding: 13px 14px;
+  min-height: 48px;
   outline: none;
+  transition: border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.input:focus { border-color: var(--acento); }
-.input:disabled { background: var(--fondo); color: var(--texto-suave); }
-textarea.input { resize: vertical; }
+.input::placeholder { color: var(--text-3); }
+.input:focus { border-color: var(--text-2); }
+.input:disabled { background: var(--bg); color: var(--text-3); }
+textarea.input { resize: vertical; min-height: 0; }
 
-.input-chico { padding: 8px 10px; font-size: 14.5px; width: auto; }
+/* Los select del sistema no heredan color en dark: hay que forzarlo. */
+select.input { color: var(--text); appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-2) 50%),
+                    linear-gradient(135deg, var(--text-2) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+}
+select.input option { background: var(--bg-2); color: var(--text); }
+
+.input-chico { padding: 9px 12px; font-size: 14.5px; width: auto; min-height: 44px; }
 
 .form-error {
-  background: #fbe9e7;
+  background: rgba(208, 90, 90, 0.14);
   color: var(--peligro);
-  border: 1px solid #efc4bf;
+  border: 1px solid rgba(208, 90, 90, 0.35);
   border-radius: 8px;
   padding: 9px 12px;
   font-size: 14px;
@@ -384,7 +449,7 @@ textarea.input { resize: vertical; }
   padding: 10px;
   cursor: pointer;
 }
-.seg-btn.activo { background: var(--acento); color: #f2f5f3; }
+.seg-btn.activo { background: var(--accent); color: var(--text); font-weight: 500; }
 
 .check-fila {
   display: flex;
@@ -435,7 +500,7 @@ textarea.input { resize: vertical; }
   min-height: 44px;
   display: flex;
   align-items: center;
-  color: var(--acento);
+  color: var(--text-2);
   font-size: 14px;
   font-weight: 600;
 }
@@ -444,7 +509,7 @@ textarea.input { resize: vertical; }
 .chip.activo {
   background: var(--acento);
   border-color: var(--acento);
-  color: #f2f5f3;
+  color: var(--text);
 }
 .chip .chip-num { font-weight: 400; opacity: 0.8; }
 
@@ -658,7 +723,8 @@ textarea.input { resize: vertical; }
   align-items: center;
   gap: 8px;
   padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
-  background: var(--acento);
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--line);
 }
 .mat-cab .mat-buscador {
   flex: 1;
@@ -674,10 +740,10 @@ textarea.input { resize: vertical; }
   flex: 0 0 auto;
   min-height: 48px;
   padding: 0 14px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--line-strong);
   border-radius: 10px;
   background: transparent;
-  color: #f2f5f3;
+  color: var(--text);
   font-family: inherit;
   font-size: 15px;
   font-weight: 600;
@@ -778,7 +844,7 @@ textarea.input { resize: vertical; }
   border-radius: 999px;
   border: none;
   background: rgba(20, 25, 23, 0.75);
-  color: #fff;
+  color: var(--text);
   font-size: 13px;
   line-height: 1;
   cursor: pointer;
@@ -937,7 +1003,7 @@ textarea.input { resize: vertical; }
   font-family: inherit;
   cursor: pointer;
 }
-.tab.activo { background: var(--acento); border-color: var(--acento); color: #f2f5f3; }
+.tab.activo { background: var(--accent); border-color: var(--accent); color: var(--text); }
 
 .gestion-form {
   background: var(--tarjeta);
@@ -1011,7 +1077,7 @@ textarea.input { resize: vertical; }
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(18, 26, 24, 0.55);
+  background: rgba(0, 0, 0, 0.68);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -1067,7 +1133,7 @@ textarea.input { resize: vertical; }
   max-width: 100%;
   max-height: 80vh;
   border-radius: 10px;
-  background: #000;
+  background: rgba(0, 0, 0, 0.92);
 }
 .modal-foto-pie { color: #e5eae8; font-size: 13.5px; text-align: center; }
 
@@ -1079,8 +1145,9 @@ textarea.input { resize: vertical; }
   transform: translateX(-50%);
   bottom: calc(84px + env(safe-area-inset-bottom));
   z-index: 200;
-  background: #1d2523;
-  color: #f2f5f3;
+  background: var(--bg-2);
+  color: var(--text);
+  border: 1px solid var(--line-strong);
   border-radius: 10px;
   padding: 11px 18px;
   font-size: 14.5px;
