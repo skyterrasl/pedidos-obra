@@ -107,7 +107,7 @@ PO.seed = {
     setPedido(p1, {
       numero: P(1), obraId: oCar.id, obraNombre: "CAR-233 · Cardales Village",
       rubro: "HERRERIA", solicitanteUid: demo1.uid, solicitanteNombre: demo1.nombre,
-      creado: ts(20), prioridad: "normal", fechaNecesaria: fecha(-16), estado: "entregado",
+      creado: ts(20), fechaNecesaria: fecha(-16), estado: "entregado",
       observaciones: "",
       items: [{ descripcion: "Hierro del 8", cantidad: 200, unidad: "kg", recibido: 200 },
               { descripcion: "Hierro del 6", cantidad: 120, unidad: "kg", recibido: 120 }],
@@ -122,7 +122,7 @@ PO.seed = {
     setPedido(p2, {
       numero: P(2), obraId: oMol.id, obraNombre: "MOL-1047 · Casa Molina",
       rubro: "PINTURA", solicitanteUid: demo2.uid, solicitanteNombre: demo2.nombre,
-      creado: ts(15), prioridad: "normal", fechaNecesaria: fecha(-10), estado: "entregado",
+      creado: ts(15), fechaNecesaria: fecha(-10), estado: "entregado",
       observaciones: "Color según muestra aprobada por el cliente.",
       items: [{ descripcion: "Látex interior blanco x 20 lts", cantidad: 6, unidad: "un.", recibido: 6 }],
       proveedor: { nombre: "Pinturería Central", fechaEstimada: fecha(-11), oc: null,
@@ -136,7 +136,7 @@ PO.seed = {
     setPedido(p3, {
       numero: P(3), obraId: oSan.id, obraNombre: "SAN-118 · Santa Elena",
       rubro: "SANITARIOS", solicitanteUid: demo1.uid, solicitanteNombre: demo1.nombre,
-      creado: ts(12), prioridad: "normal", fechaNecesaria: fecha(-5), estado: "cancelado",
+      creado: ts(12), fechaNecesaria: fecha(-5), estado: "cancelado",
       observaciones: "",
       items: [{ descripcion: "Caño PPR 25 mm x 4 m", cantidad: 30, unidad: "un.", recibido: 0 }],
       proveedor: null,
@@ -149,7 +149,7 @@ PO.seed = {
     setPedido(p4, {
       numero: P(4), obraId: oMol.id, obraNombre: "MOL-1047 · Casa Molina",
       rubro: CORRALON, solicitanteUid: demo2.uid, solicitanteNombre: demo2.nombre,
-      creado: ts(8), prioridad: "normal", fechaNecesaria: fecha(1), estado: "entrega_parcial",
+      creado: ts(8), fechaNecesaria: fecha(1), estado: "entrega_parcial",
       observaciones: "Descargar al fondo del lote, al lado del obrador.",
       items: [
         { descripcion: "Placa de yeso 12,5 mm", cantidad: 60, unidad: "un.", recibido: 20 },
@@ -169,7 +169,7 @@ PO.seed = {
     setPedido(p5, {
       numero: P(5), obraId: oCar.id, obraNombre: "CAR-233 · Cardales Village",
       rubro: "HERRERIA", solicitanteUid: demo1.uid, solicitanteNombre: demo1.nombre,
-      creado: ts(7), prioridad: "normal", fechaNecesaria: fecha(-1), estado: "pedido_proveedor",
+      creado: ts(7), fechaNecesaria: fecha(-1), estado: "pedido_proveedor",
       observaciones: "",
       items: [{ descripcion: "Malla sima 15x15 6 mm", cantidad: 25, unidad: "un.", recibido: 0 }],
       proveedor: { nombre: "Corralón Norte", fechaEstimada: fecha(-1), oc: null,
@@ -182,7 +182,7 @@ PO.seed = {
     setPedido(p6, {
       numero: P(6), obraId: oSan.id, obraNombre: "SAN-118 · Santa Elena",
       rubro: "ELECTRICIDAD", solicitanteUid: demo1.uid, solicitanteNombre: demo1.nombre,
-      creado: ts(4), prioridad: "normal", fechaNecesaria: fecha(6), estado: "pedido_proveedor",
+      creado: ts(4), fechaNecesaria: fecha(6), estado: "pedido_proveedor",
       observaciones: "",
       items: [{ descripcion: "Cable unipolar 2,5 mm² (rollo 100 m)", cantidad: 8, unidad: "un.", recibido: 0 },
               { descripcion: "Caño corrugado 3/4", cantidad: 300, unidad: "ml", recibido: 0 }],
@@ -196,7 +196,7 @@ PO.seed = {
     setPedido(p7, {
       numero: P(7), obraId: oMol.id, obraNombre: "MOL-1047 · Casa Molina",
       rubro: "SANITARIOS", solicitanteUid: demo2.uid, solicitanteNombre: demo2.nombre,
-      creado: ts(2), prioridad: "normal", fechaNecesaria: fecha(7), estado: "enviado",
+      creado: ts(2), fechaNecesaria: fecha(7), estado: "enviado",
       observaciones: "",
       items: [{ descripcion: "Inodoro con mochila línea Bari", cantidad: 3, unidad: "un.", recibido: 0 },
               { descripcion: "Grifería monocomando cocina", cantidad: 1, unidad: "un.", recibido: 0 }],
@@ -209,19 +209,19 @@ PO.seed = {
     setPedido(p8, {
       numero: P(8), obraId: oCar.id, obraNombre: "CAR-233 · Cardales Village",
       rubro: "PINTURA", solicitanteUid: demo1.uid, solicitanteNombre: demo1.nombre,
-      creado: ts(1), prioridad: "normal", fechaNecesaria: fecha(10), estado: "enviado",
+      creado: ts(1), fechaNecesaria: fecha(10), estado: "enviado",
       observaciones: "",
       items: [{ descripcion: "Enduido plástico x 20 kg", cantidad: 5, unidad: "un.", recibido: 0 }],
       proveedor: null,
       historial: [h(1, "creado", demo1.nombre), h(1, "enviado", demo1.nombre)]
     });
 
-    // P-0009 · enviado URGENTE
+    // P-0009 · enviado
     const p9 = nuevoRef();
     setPedido(p9, {
       numero: P(9), obraId: oMol.id, obraNombre: "MOL-1047 · Casa Molina",
       rubro: CORRALON, solicitanteUid: demo2.uid, solicitanteNombre: demo2.nombre,
-      creado: ts(0.2), prioridad: "urgente", fechaNecesaria: fecha(1), estado: "enviado",
+      creado: ts(0.2), fechaNecesaria: fecha(1), estado: "enviado",
       observaciones: "Se paró el hormigonado del contrapiso: falta cemento.",
       items: [{ descripcion: "Cemento CPC40 x 50 kg", cantidad: 20, unidad: "bolsa", recibido: 0 },
               { descripcion: "Arena fina", cantidad: 3, unidad: "m³", recibido: 0 }],
@@ -234,7 +234,7 @@ PO.seed = {
     setPedido(p10, {
       numero: null, obraId: oMol.id, obraNombre: "MOL-1047 · Casa Molina",
       rubro: "HERRERIA", solicitanteUid: usuario.uid, solicitanteNombre: yo,
-      creado: ts(0.1), prioridad: "normal", fechaNecesaria: fecha(14), estado: "borrador",
+      creado: ts(0.1), fechaNecesaria: fecha(14), estado: "borrador",
       observaciones: "Confirmar medidas con el herrero antes de enviar.",
       items: [{ descripcion: "Baranda de escalera (según plano H-02)", cantidad: 1, unidad: "un.", recibido: 0 }],
       proveedor: null,

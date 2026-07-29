@@ -183,7 +183,7 @@ window.PO = window.PO || {};
     vista: "dashboard",
     tabGestion: "obras",
     pedidoAbiertoId: null,
-    filtros: { estado: "todos", obra: "todas", rubro: "todos", prioridad: "todas", desde: "", hasta: "", q: "" },
+    filtros: { estado: "todos", obra: "todas", rubro: "todos", desde: "", hasta: "", q: "" },
     dash: { obra: "todas", rubro: "todos" },
     edicionBorradorId: null, // si estamos editando un borrador existente
     duplicarDe: null,        // precarga para "Duplicar pedido"
@@ -365,7 +365,7 @@ window.PO = window.PO || {};
 
   function iniciarSesion(perfil) {
     estado.usuario = perfil;
-    estado.filtros = { estado: "todos", obra: "todas", rubro: "todos", prioridad: "todas", desde: "", hasta: "", q: "" };
+    estado.filtros = { estado: "todos", obra: "todas", rubro: "todos", desde: "", hasta: "", q: "" };
     estado.dash = { obra: "todas", rubro: "todos" };
 
     $("nav-gestion").classList.toggle("oculto", !esAdmin());
@@ -458,7 +458,6 @@ window.PO = window.PO || {};
     });
     $("filtro-obra").addEventListener("change", (e) => { estado.filtros.obra = e.target.value; renderListado(); });
     $("filtro-rubro").addEventListener("change", (e) => { estado.filtros.rubro = e.target.value; renderListado(); });
-    $("filtro-prioridad").addEventListener("change", (e) => { estado.filtros.prioridad = e.target.value; renderListado(); });
     $("filtro-desde").addEventListener("change", (e) => { estado.filtros.desde = e.target.value; renderListado(); });
     $("filtro-hasta").addEventListener("change", (e) => { estado.filtros.hasta = e.target.value; renderListado(); });
     $("buscador").addEventListener("input", (e) => { estado.filtros.q = e.target.value.trim().toLowerCase(); renderListado(); });
@@ -486,13 +485,6 @@ window.PO = window.PO || {};
       $(id).querySelectorAll(".seg-btn").forEach((b) =>
         b.addEventListener("click", () => { setSegmentado(id, b.dataset.valor); autoguardar(); })
       )
-    );
-    $("seg-prioridad").querySelectorAll(".seg-btn").forEach((b) =>
-      b.addEventListener("click", () => {
-        $("seg-prioridad").querySelectorAll(".seg-btn").forEach((x) => x.classList.remove("activo"));
-        b.classList.add("activo");
-        autoguardar();
-      })
     );
     // Envío a obra vs. retiro: el campo del autorizado solo aparece si retiran.
     $("seg-entrega-pedido").querySelectorAll(".seg-btn").forEach((b) =>
@@ -675,21 +667,14 @@ window.PO = window.PO || {};
       }
     }
 
-    // Alertas: atrasados y urgentes
+    // Alertas: lo atrasado. La urgencia real la marca la fecha en que se
+    // necesita, no una etiqueta aparte.
     const atrasados = base.filter(esAtrasado);
-    const urgentes = base.filter((p) =>
-      p.prioridad === "urgente" && ABIERTOS.includes(p.estado) && !esAtrasado(p));
 
     if (atrasados.length) {
       html += '<div class="alerta-seccion"><div class="alerta-titulo atrasados">Atrasados (' +
         atrasados.length + ")</div>" +
-        atrasados.slice(0, 5).map((p) => alertaCard(p, true)).join("") +
-        "</div>";
-    }
-    if (urgentes.length) {
-      html += '<div class="alerta-seccion"><div class="alerta-titulo urgentes">Urgentes (' +
-        urgentes.length + ")</div>" +
-        urgentes.slice(0, 5).map((p) => alertaCard(p, false)).join("") +
+        atrasados.slice(0, 5).map((p) => alertaCard(p)).join("") +
         "</div>";
     }
 
@@ -773,15 +758,12 @@ window.PO = window.PO || {};
     );
   }
 
-  function alertaCard(p, atrasado) {
-    const fecha = atrasado
-      ? "llegaba el " + fmtFecha(p.proveedor.fechaEstimada)
-      : "se necesita el " + fmtFecha(p.fechaNecesaria);
-    return '<div class="alerta-card' + (atrasado ? " atrasado" : "") + '" data-id="' + esc(p.id) + '">' +
+  function alertaCard(p) {
+    return '<div class="alerta-card atrasado" data-id="' + esc(p.id) + '">' +
       '<div class="a-linea1"><span>' + esc(p.numero || "Borrador") + " · " + esc(p.obraNombre) + "</span>" +
-      '<span class="a-marca">' + (atrasado ? "ATRASADO" : "URGENTE") + "</span></div>" +
-      '<div class="a-linea2">' + esc(p.rubro) + " · " + fecha + " · " +
-      (ESTADOS[p.estado] || p.estado) + "</div></div>";
+      '<span class="a-marca">ATRASADO</span></div>' +
+      '<div class="a-linea2">' + esc(p.rubro) + " · llegaba el " +
+      fmtFecha(p.proveedor.fechaEstimada) + " · " + (ESTADOS[p.estado] || p.estado) + "</div></div>";
   }
 
   /* -------------------------------------------------------------- listado - */
@@ -791,7 +773,6 @@ window.PO = window.PO || {};
     const f = estado.filtros;
     if (f.obra !== "todas") lista = lista.filter((p) => p.obraId === f.obra);
     if (f.rubro !== "todos") lista = lista.filter((p) => p.rubro === f.rubro);
-    if (f.prioridad !== "todas") lista = lista.filter((p) => (p.prioridad || "normal") === f.prioridad);
     if (f.desde) lista = lista.filter((p) => tsAFechaISO(p.creado) >= f.desde);
     if (f.hasta) lista = lista.filter((p) => tsAFechaISO(p.creado) <= f.hasta);
     if (f.q) {
@@ -843,7 +824,6 @@ window.PO = window.PO || {};
     renderFiltroEstado();
     opcionesObras($("filtro-obra"), estado.filtros.obra, "Todas las obras");
     opcionesRubros($("filtro-rubro"), estado.filtros.rubro, "Todos los rubros");
-    $("filtro-prioridad").value = estado.filtros.prioridad;
     $("filtro-desde").value = estado.filtros.desde;
     $("filtro-hasta").value = estado.filtros.hasta;
 
@@ -861,11 +841,9 @@ window.PO = window.PO || {};
     const hoy = hoyISO();
     ul.innerHTML = lista.map((p) => {
       const vencido = p.fechaNecesaria && p.fechaNecesaria < hoy && ABIERTOS.includes(p.estado);
-      const urgente = p.prioridad === "urgente";
-      return '<li class="pedido-card' + (urgente ? " urgente" : "") + '" data-id="' + esc(p.id) + '">' +
+      return '<li class="pedido-card" data-id="' + esc(p.id) + '">' +
         '<div class="pedido-card-cab"><div class="cab-izq">' +
           '<span class="pedido-numero">' + esc(p.numero || "Borrador") + "</span>" +
-          (urgente ? '<span class="tag-urgente">URGENTE</span>' : "") +
           (esAtrasado(p) ? '<span class="tag-atrasado">ATRASADO</span>' : "") +
         "</div>" +
           '<span class="badge badge-' + esc(p.estado) + '">' + (ESTADOS[p.estado] || esc(p.estado)) + "</span>" +
@@ -916,7 +894,6 @@ window.PO = window.PO || {};
     $("pedido-fecha").value = hoyISO();
     $("pedido-fecha").min = hoyISO();
     $("pedido-obs").value = "";
-    setPrioridad("normal");
     setEntregaPedido("obra");
     $("pedido-autorizado").value = "";
     $("items-editor").innerHTML = "";
@@ -938,7 +915,6 @@ window.PO = window.PO || {};
       $("pedido-rubro").value = editando.rubro;
       $("pedido-fecha").value = editando.fechaNecesaria || "";
       $("pedido-obs").value = editando.observaciones || "";
-      setPrioridad(editando.prioridad || "normal");
       setEntregaPedido((editando.entrega && editando.entrega.tipo) || "obra");
       $("pedido-autorizado").value = (editando.entrega && editando.entrega.autorizado) || "";
       // Volquetes y hormigones se reconstruyen desde su formulario, no como
@@ -963,16 +939,6 @@ window.PO = window.PO || {};
     }
     aplicarFormularioDeRubro();
     cerrarPanelMateriales();
-  }
-
-  function setPrioridad(valor) {
-    $("seg-prioridad").querySelectorAll(".seg-btn").forEach((b) =>
-      b.classList.toggle("activo", b.dataset.valor === valor));
-  }
-
-  function prioridadElegida() {
-    const b = $("seg-prioridad").querySelector(".seg-btn.activo");
-    return (b && b.dataset.valor) || "normal";
   }
 
   /* --- Rubros con formulario propio: no se piden "materiales" sueltos sino
@@ -1282,7 +1248,6 @@ window.PO = window.PO || {};
         const datos = {
           obraId: $("pedido-obra").value,
           rubro: $("pedido-rubro").value,
-          prioridad: prioridadElegida(),
           entrega: leerEntrega(),
           fechaNecesaria: $("pedido-fecha").value,
           observaciones: $("pedido-obs").value,
@@ -1309,7 +1274,6 @@ window.PO = window.PO || {};
     $("pedido-rubro").value = datos.rubro || "";
     $("pedido-fecha").value = datos.fechaNecesaria || "";
     $("pedido-obs").value = datos.observaciones || "";
-    setPrioridad(datos.prioridad || "normal");
     setEntregaPedido((datos.entrega && datos.entrega.tipo) || "obra");
     $("pedido-autorizado").value = (datos.entrega && datos.entrega.autorizado) || "";
     if (cargarDetalleRubro(datos.detalleRubro)) {
@@ -1363,7 +1327,6 @@ window.PO = window.PO || {};
         const p = estado.pedidos.find((x) => x.id === estado.edicionBorradorId);
         const campos = {
           obraId, obraNombre: obra.nombre, rubro,
-          prioridad: prioridadElegida(),
           entrega: leerEntrega(),
           detalleRubro: res.extra || null,
           fechaNecesaria: fechaNecesaria || null,
@@ -1400,7 +1363,6 @@ window.PO = window.PO || {};
         solicitanteUid: u.uid,
         solicitanteNombre: u.nombre,
         creado: PO.fb.tsServidor(),
-        prioridad: prioridadElegida(),
         entrega: leerEntrega(),
         detalleRubro: res.extra || null,
         fechaNecesaria: fechaNecesaria || null,
@@ -1544,7 +1506,6 @@ window.PO = window.PO || {};
     const soySolicitante = p.solicitanteUid === u.uid;
     const soyDirectorObra = esDirector() && directorDeObra(p);
     const abierto = ABIERTOS.includes(p.estado);
-    const urgente = p.prioridad === "urgente";
     const atrasado = esAtrasado(p);
     const hoy = hoyISO();
     const vencido = p.fechaNecesaria && p.fechaNecesaria < hoy && abierto;
@@ -1554,7 +1515,6 @@ window.PO = window.PO || {};
     /* Cabecera */
     html += '<div class="detalle-cab"><div class="cab-izq">' +
       '<span class="pedido-numero">' + esc(p.numero || "Borrador") + "</span>" +
-      (urgente ? '<span class="tag-urgente">URGENTE</span>' : "") +
       (atrasado ? '<span class="tag-atrasado">ATRASADO</span>' : "") +
       "</div>" +
       '<span class="badge badge-' + esc(p.estado) + '">' + (ESTADOS[p.estado] || esc(p.estado)) + "</span>" +
@@ -1565,7 +1525,6 @@ window.PO = window.PO || {};
     html += '<div class="bloque"><h4>Datos del pedido</h4>' +
       dato("Obra", esc(p.obraNombre) + (obra && obra.direccion ? " · " + esc(obra.direccion) : "")) +
       dato("Rubro", esc(p.rubro)) +
-      dato("Prioridad", p.prioridad === "urgente" ? "<span style='color:var(--alerta)'>Urgente</span>" : "Normal") +
       dato("Solicitó", esc(p.solicitanteNombre)) +
       dato("Creado", fmtTs(p.creado) + " (" + haceCuanto(p.creado) + ")") +
       dato("Se necesita para", (vencido ? "<span style='color:var(--peligro)'>" : "<span>") +

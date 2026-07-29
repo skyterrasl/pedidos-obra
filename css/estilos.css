@@ -555,19 +555,17 @@ select.input option { background: var(--bg-2); color: var(--text); }
   margin-bottom: 8px;
 }
 .alerta-titulo.atrasados { color: var(--peligro); }
-.alerta-titulo.urgentes { color: var(--alerta); }
 
 .alerta-card {
   background: var(--tarjeta);
   border: 1px solid var(--borde);
-  border-left: 4px solid var(--alerta);
+  border-left: 4px solid var(--peligro);
   border-radius: 10px;
   padding: 10px 12px;
   margin-bottom: 8px;
   cursor: pointer;
   box-shadow: var(--sombra);
 }
-.alerta-card.atrasado { border-left-color: var(--peligro); }
 .alerta-card .a-linea1 {
   display: flex;
   justify-content: space-between;
@@ -576,9 +574,7 @@ select.input option { background: var(--bg-2); color: var(--text); }
   font-weight: 700;
 }
 .alerta-card .a-linea2 { font-size: 13px; color: var(--texto-suave); }
-.alerta-card .a-marca { font-size: 12px; font-weight: 700; }
-.alerta-card.atrasado .a-marca { color: var(--peligro); }
-.alerta-card:not(.atrasado) .a-marca { color: var(--alerta); }
+.alerta-card .a-marca { font-size: 12px; font-weight: 700; color: var(--peligro); }
 
 .dash-grid {
   display: grid;
@@ -623,8 +619,6 @@ select.input option { background: var(--bg-2); color: var(--text); }
   margin-bottom: 10px;
   cursor: pointer;
 }
-.pedido-card.urgente { border-left: 4px solid var(--alerta); }
-
 .pedido-card-cab {
   display: flex;
   align-items: center;
@@ -636,15 +630,6 @@ select.input option { background: var(--bg-2); color: var(--text); }
 
 .pedido-numero { font-weight: 700; font-size: 15.5px; }
 
-.tag-urgente {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  color: var(--alerta);
-  border: 1px solid var(--alerta);
-  border-radius: 999px;
-  padding: 1px 8px;
-}
 .tag-atrasado {
   font-size: 11px;
   font-weight: 700;

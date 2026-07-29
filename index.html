@@ -145,11 +145,6 @@
           <div class="filtros-extra oculto" id="filtros-extra">
             <select class="input" id="filtro-obra"></select>
             <select class="input" id="filtro-rubro"></select>
-            <select class="input" id="filtro-prioridad">
-              <option value="todas">Cualquier prioridad</option>
-              <option value="normal">Normal</option>
-              <option value="urgente">Urgente</option>
-            </select>
             <label class="campo"><span>Desde</span>
               <input class="input" type="date" id="filtro-desde" /></label>
             <label class="campo"><span>Hasta</span>
@@ -178,14 +173,6 @@
             <span>Rubro (un pedido = un rubro; si necesitás de dos rubros, hacé dos pedidos)</span>
             <select class="input" id="pedido-rubro" required></select>
           </label>
-
-          <div class="campo">
-            <span class="campo-titulo">Prioridad</span>
-            <div class="segmentado" id="seg-prioridad">
-              <button type="button" class="seg-btn activo" data-valor="normal">Normal</button>
-              <button type="button" class="seg-btn" data-valor="urgente">Urgente</button>
-            </div>
-          </div>
 
           <label class="campo">
             <span>Se necesita para el</span>

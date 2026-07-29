@@ -25,14 +25,13 @@ window.PO = window.PO || {};
   }
 
   function filasExport(pedidos, h) {
-    const cab = ["Número", "Obra", "Rubro", "Estado", "Prioridad", "Solicitante",
+    const cab = ["Número", "Obra", "Rubro", "Estado", "Solicitante",
       "Creado", "Fecha necesaria", "Proveedor", "Fecha estimada", "Ítems", "% recibido"];
     const filas = pedidos.map((p) => [
       p.numero || "Borrador",
       p.obraNombre || "",
       p.rubro || "",
       (h.ESTADOS && h.ESTADOS[p.estado]) || p.estado,
-      p.prioridad === "urgente" ? "Urgente" : "Normal",
       p.solicitanteNombre || "",
       h.tsAFechaISO(p.creado),
       p.fechaNecesaria || "",
@@ -75,7 +74,7 @@ window.PO = window.PO || {};
       const XLSX = await cargarSheetJS();
       const ws = XLSX.utils.aoa_to_sheet(filas);
       ws["!cols"] = [
-        { wch: 9 }, { wch: 26 }, { wch: 20 }, { wch: 16 }, { wch: 9 }, { wch: 18 },
+        { wch: 9 }, { wch: 26 }, { wch: 20 }, { wch: 16 }, { wch: 18 },
         { wch: 11 }, { wch: 13 }, { wch: 20 }, { wch: 13 }, { wch: 60 }, { wch: 10 }
       ];
       const wb = XLSX.utils.book_new();
