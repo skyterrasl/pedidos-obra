@@ -961,19 +961,33 @@ window.PO = window.PO || {};
       fuente = fuente.filter((p) =>
         (rubroSel && p.rubro === rubroSel) || (obraSel && p.obraId === obraSel));
     }
+    // 1) Lo ya pedido antes en esa obra/rubro va primero: es lo más probable.
     const set = new Map();
     fuente.forEach((p) => (p.items || []).forEach((it) => {
       const d = (it.descripcion || "").trim();
-      if (d) set.set(d.toLowerCase(), d);
+      if (d) set.set(clave(d), d);
     }));
-    // Sin historial propio todavía: al menos un ejemplo real del rubro
-    // elegido, para que el autocompletado no arranque vacío.
-    if (rubroSel && MATERIALES_EJEMPLO[rubroSel]) {
+
+    // 2) Catálogo del rubro (listado de materiales de Sky Terra), si existe.
+    const catalogo = (window.MATERIALES_CATALOGO || {})[rubroSel] || [];
+    catalogo.forEach((m) => { if (!set.has(clave(m))) set.set(clave(m), m); });
+
+    // 3) Si el rubro no tiene catálogo ni historial, al menos un ejemplo real.
+    if (!set.size && rubroSel && MATERIALES_EJEMPLO[rubroSel]) {
       const ej = MATERIALES_EJEMPLO[rubroSel];
-      if (!set.has(ej.toLowerCase())) set.set(ej.toLowerCase(), ej);
+      set.set(clave(ej), ej);
     }
-    dl.innerHTML = Array.from(set.values()).sort().slice(0, 80)
+
+    // Sin .sort(): el orden ya es "primero lo tuyo, después el catálogo"
+    // (que viene alfabético). El navegador filtra a medida que se escribe.
+    dl.innerHTML = Array.from(set.values()).slice(0, 700)
       .map((d) => '<option value="' + esc(d) + '"></option>').join("");
+  }
+
+  /** Clave para deduplicar materiales: ignora mayúsculas y puntuación
+      (el catálogo trae "YESO TUYANGO 30 KG," y "YESO TUYANGO 30 KG."). */
+  function clave(s) {
+    return s.toLowerCase().replace(/[.,]/g, "").replace(/\s+/g, " ").trim();
   }
 
   function agregarFilaItem(it) {

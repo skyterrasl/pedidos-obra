@@ -12,7 +12,7 @@
    ¿Cambiaste archivos y no ves la novedad? Subí la versión (v1 → v2).
    ============================================================================ */
 
-const CACHE = "pedidos-obra-v17";
+const CACHE = "pedidos-obra-v18";
 
 const APP_SHELL = [
   "./",
@@ -25,6 +25,7 @@ const APP_SHELL = [
   "./js/store.js",
   "./js/export.js",
   "./js/seed.js",
+  "./js/materiales.js",
   "./js/app.js",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png"

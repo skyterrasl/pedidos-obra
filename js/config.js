@@ -41,6 +41,7 @@ window.APP_CONFIG = {
      estos: se sacaron "Materiales gruesos (corralón)" e "Hierros" que estaban
      antes. Los carga el botón de Gestión → Rubros; después se editan desde ahí. */
   RUBROS_DEFAULT: [
+    "MATERIALES GRUESOS",
     "MADERAS",
     "ELECTRICIDAD",
     "HERRERIA",
