@@ -887,6 +887,28 @@ select.input option { background: var(--bg-2); color: var(--text); }
 .bloque-alerta { border-left: 4px solid var(--peligro); }
 .bloque-alerta h4 { color: var(--peligro); }
 
+/* Mensaje listo para pegarle al proveedor: se muestra tal cual se va a
+   mandar, con los saltos de línea respetados. */
+.msg-proveedor {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--bg-input);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--texto);
+  user-select: text;
+  -webkit-user-select: text;
+}
+.msg-acciones {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.msg-acciones .btn { flex: 1; }
+
 /* Rendimiento: se despliega solo si a alguien le interesa mirarlo. */
 .bloque-rend { padding-bottom: 14px; }
 .rend-cab {

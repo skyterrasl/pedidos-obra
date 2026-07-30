@@ -1809,6 +1809,17 @@ window.PO = window.PO || {};
       }).join("") +
       "</div>";
 
+    /* Mensaje listo para mandarle al proveedor. Administración no tiene que
+       redactar nada: copia y pega, o toca WhatsApp y elige el contacto. */
+    if (soyAdmin && abierto) {
+      html += '<div class="bloque"><h4>Mensaje para el proveedor</h4>' +
+        '<div class="msg-proveedor" id="msg-proveedor">' + esc(mensajeProveedor(p)) + "</div>" +
+        '<div class="msg-acciones">' +
+          '<button type="button" class="btn btn-ghost" id="btn-copiar-msg">Copiar</button>' +
+          '<button type="button" class="btn btn-primario" id="btn-wsp-msg">Mandar por WhatsApp</button>' +
+        "</div></div>";
+    }
+
     /* Recepciones (con fotos de remito) */
     if (estado.recepcionesPedido.length) {
       html += '<div class="bloque"><h4>Recepciones</h4>' +
@@ -1856,7 +1867,9 @@ window.PO = window.PO || {};
     // "recibido" queda contemplado solo por pedidos viejos que hayan quedado
     // en ese estado: el paso se eliminó del circuito.
     if (soyAdmin && ["enviado", "recibido"].includes(p.estado)) {
-      botones.push('<button type="button" class="btn btn-primario" id="btn-pedir-proveedor">Pedir al proveedor</button>');
+      // El pedido se manda con el mensaje de arriba; acá solo se registra a
+      // quién se le compró y para cuándo (de esa fecha salen los atrasados).
+      botones.push('<button type="button" class="btn btn-primario" id="btn-pedir-proveedor">Ya lo pedí: cargar proveedor y fecha</button>');
     }
     if ((soyAdmin || soyDirectorObra) && ["pedido_proveedor", "entrega_parcial"].includes(p.estado)) {
       botones.push('<button type="button" class="btn btn-primario" id="btn-recepcion">Registrar recepción</button>');
@@ -1883,6 +1896,15 @@ window.PO = window.PO || {};
         toast("Borrador eliminado.");
         ir("listado");
       } catch (e) { toast("No se pudo eliminar: " + (e.message || e)); }
+    });
+    on("btn-copiar-msg", async () => {
+      const ok = await copiarAlPortapapeles(mensajeProveedor(p));
+      toast(ok ? "Mensaje copiado: pegalo en el WhatsApp del proveedor."
+               : "No se pudo copiar: seleccioná el texto y copialo a mano.");
+    });
+    on("btn-wsp-msg", () => {
+      // Sin número: WhatsApp abre la lista de contactos y elegís al proveedor.
+      window.open("https://wa.me/?text=" + encodeURIComponent(mensajeProveedor(p)), "_blank");
     });
     on("btn-pedir-proveedor", abrirModalProveedor);
     on("btn-recepcion", abrirModalRecepcion);
@@ -1939,6 +1961,59 @@ window.PO = window.PO || {};
       toast("Pedido " + numero + " enviado.");
     } catch (e) {
       toast("No se pudo enviar: " + (e.message || e));
+    }
+  }
+
+  /* --- Mensaje para el proveedor -------------------------------------------
+         El pedido ya tiene todo lo que hay que decirle: qué, cuánto, para
+         cuándo y a dónde. Se arma solo y queda listo para pegar en WhatsApp,
+         que es como se pide en la práctica. --- */
+
+  function mensajeProveedor(p) {
+    const obra = estado.obras.find((o) => o.id === p.obraId);
+    const lineas = [];
+
+    lineas.push("Hola! Pedido de Sky Terra" + (p.numero ? " (" + p.numero + ")" : "") + ":");
+    lineas.push("");
+    (p.items || []).forEach((it) =>
+      lineas.push("- " + fmtCant(it.cantidad) + " " + (it.unidad || "un.") + " · " + it.descripcion));
+    lineas.push("");
+
+    if (p.fechaNecesaria) lineas.push("Lo necesitamos para el " + fmtFecha(p.fechaNecesaria) + ".");
+
+    const entrega = p.entrega || {};
+    if (entrega.tipo === "retira") {
+      lineas.push("Lo pasamos a retirar nosotros" +
+        (entrega.autorizado ? " (retira " + entrega.autorizado + ")" : "") + ".");
+    } else {
+      lineas.push("Entregar en la obra " + p.obraNombre +
+        (obra && obra.direccion ? " — " + obra.direccion : "") + ".");
+    }
+
+    if (p.observaciones) lineas.push("Aclaración: " + p.observaciones);
+    lineas.push("");
+    lineas.push("Gracias! Cualquier cosa avisame precio y cuándo lo tenés.");
+
+    return lineas.join("\n");
+  }
+
+  async function copiarAlPortapapeles(texto) {
+    try {
+      await navigator.clipboard.writeText(texto);
+      return true;
+    } catch (e) {
+      // Safari viejo / contexto sin permiso: se copia con el truco del textarea.
+      try {
+        const t = document.createElement("textarea");
+        t.value = texto;
+        t.style.position = "fixed";
+        t.style.opacity = "0";
+        document.body.appendChild(t);
+        t.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(t);
+        return ok;
+      } catch (e2) { return false; }
     }
   }
 
