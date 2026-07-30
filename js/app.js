@@ -61,6 +61,26 @@ window.PO = window.PO || {};
       String(d.getDate()).padStart(2, "0");
   }
 
+  /** Días entre dos fechas ISO (positivo si la segunda es posterior). */
+  function diasEntre(desde, hasta) {
+    if (!desde || !hasta) return null;
+    return Math.round((Date.parse(hasta) - Date.parse(desde)) / 86400000);
+  }
+
+  /** La fecha ISO de hace n días. */
+  function isoHace(n) {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return d.getFullYear() + "-" +
+      String(d.getMonth() + 1).padStart(2, "0") + "-" +
+      String(d.getDate()).padStart(2, "0");
+  }
+
+  function fmtDias(n) {
+    const v = Math.round(n * 10) / 10;
+    return String(v).replace(".", ",") + (v === 1 ? " día" : " días");
+  }
+
   function fmtCant(n) {
     const v = Math.round(Number(n || 0) * 100) / 100;
     return String(v).replace(".", ",");
@@ -184,7 +204,7 @@ window.PO = window.PO || {};
     tabGestion: "obras",
     pedidoAbiertoId: null,
     filtros: { estado: "todos", obra: "todas", rubro: "todos", desde: "", hasta: "", q: "" },
-    dash: { obra: "todas", rubro: "todos" },
+    dash: { obra: "todas", rubro: "todos", rendimiento: false },
     edicionBorradorId: null, // si estamos editando un borrador existente
     duplicarDe: null,        // precarga para "Duplicar pedido"
     fotosRecepcion: [],      // [{base64, tipo}] del modal de recepción
@@ -557,6 +577,11 @@ window.PO = window.PO || {};
     $("cancelar-cerrar").addEventListener("click", () => cerrarModal("modal-cancelar"));
     $("cancelar-confirmar").addEventListener("click", onConfirmarCancelacion);
 
+    $("nu-cerrar").addEventListener("click", () => cerrarModal("modal-usuario"));
+    $("nu-crear").addEventListener("click", crearUsuarioNuevo);
+    $("seg-nu-rol").querySelectorAll(".seg-btn").forEach((b) =>
+      b.addEventListener("click", () => setSegmentado("seg-nu-rol", b.dataset.valor)));
+
     // Modal foto
     $("modal-foto").addEventListener("click", () => cerrarModal("modal-foto"));
 
@@ -713,6 +738,10 @@ window.PO = window.PO || {};
       }
     }
 
+    // Rendimiento: mide el circuito, no el día. Va plegado y solo para quien
+    // gestiona (el director está en obra: le importa su pedido, no el promedio).
+    if (base.length && (esAdmin() || esControl())) html += bloqueRendimiento(base);
+
     // Detalle por estado: es el índice del listado, va al final.
     html += '<div class="dash-grid">' +
       Object.keys(ESTADOS).map((k) => {
@@ -759,6 +788,14 @@ window.PO = window.PO || {};
         ir("listado");
       })
     );
+    const bRend = $("btn-rendimiento");
+    if (bRend) bRend.addEventListener("click", () => {
+      estado.dash.rendimiento = !estado.dash.rendimiento;
+      renderDashboard();
+    });
+    const bPeor = cont.querySelector(".rend-peor");
+    if (bPeor) bPeor.addEventListener("click", () => abrirDetalle(bPeor.dataset.id));
+
     cont.querySelectorAll("[data-titular]").forEach((c) =>
       c.addEventListener("click", () => {
         const t = c.dataset.titular;
@@ -820,6 +857,123 @@ window.PO = window.PO || {};
     });
     return Object.values(m).sort((a, b) =>
       (b.atrasados - a.atrasados) || (b.peorAtraso - a.peorAtraso) || (b.total - a.total));
+  }
+
+  /* --- Rendimiento: las dos cosas que el circuito ya permite medir sin que
+         nadie cargue un dato más. Solo admin y control: es información de
+         gestión, no sirve para nadie que esté parado en la obra. --- */
+
+  const VENTANA_METRICAS = 90;   // días hacia atrás que se promedian
+
+  /** Cuánto tarda administración en convertir un pedido en compra. Es el
+      único tramo del circuito que depende enteramente de la empresa. */
+  function metricaCompra(base) {
+    const desde = isoHace(VENTANA_METRICAS);
+
+    const demoras = base.map((p) => {
+      if (!p.proveedor || !p.proveedor.ts) return null;
+      const comprado = tsAFechaISO(p.proveedor.ts);
+      if (!comprado || comprado < desde) return null;
+      const env = (p.historial || []).find((h) => h.accion === "enviado");
+      const enviado = tsAFechaISO(env && env.ts ? env.ts : p.creado);
+      if (!enviado) return null;
+      return Math.max(0, diasEntre(enviado, comprado));
+    }).filter((d) => d !== null);
+
+    // Lo que está esperando comprarse ahora mismo, ordenado por antigüedad.
+    const esperando = base.filter((p) => p.estado === "enviado").map((p) => {
+      const env = (p.historial || []).find((h) => h.accion === "enviado");
+      return { p, dias: diasDesde(tsAFechaISO(env && env.ts ? env.ts : p.creado)) };
+    }).sort((a, b) => b.dias - a.dias);
+
+    return {
+      promedio: demoras.length ? demoras.reduce((a, b) => a + b, 0) / demoras.length : null,
+      n: demoras.length,
+      peor: esperando[0] || null
+    };
+  }
+
+  /** Quién cumple la fecha que prometió. Se compara la fecha estimada que
+      cargó administración contra el día de la última recepción. */
+  function metricaProveedores(base) {
+    const desde = isoHace(VENTANA_METRICAS);
+    const m = {};
+
+    base.forEach((p) => {
+      const prov = p.proveedor;
+      if (!prov || !prov.nombre || !prov.fechaEstimada) return;
+      if (!m[prov.nombre]) {
+        m[prov.nombre] = { nombre: prov.nombre, cerrados: 0, aTiempo: 0, sumaTarde: 0, tarde: 0, vencidos: 0 };
+      }
+      const r = m[prov.nombre];
+
+      if (p.estado === "entregado") {
+        const rec = (p.historial || []).filter((h) => h.accion === "recepcion").pop();
+        const entregado = tsAFechaISO(rec && rec.ts ? rec.ts : p.proveedor.ts);
+        if (!entregado || entregado < desde) return;
+        r.cerrados++;
+        const desvio = diasEntre(prov.fechaEstimada, entregado);
+        if (desvio <= 0) r.aTiempo++;
+        else { r.tarde++; r.sumaTarde += desvio; }
+      } else if (esAtrasado(p)) {
+        r.vencidos++;   // todavía no llegó y ya pasó la fecha: cuenta en contra
+      }
+    });
+
+    return Object.values(m)
+      .filter((r) => r.cerrados + r.vencidos >= 2)
+      .sort((a, b) => (b.vencidos + b.tarde) - (a.vencidos + a.tarde) ||
+                      (b.cerrados + b.vencidos) - (a.cerrados + a.vencidos));
+  }
+
+  function bloqueRendimiento(base) {
+    const compra = metricaCompra(base);
+    const provs = metricaProveedores(base);
+    const abierto = estado.dash.rendimiento;
+
+    let cuerpo = '<div class="rend-sub">Demora en comprar</div>';
+    if (compra.promedio === null) {
+      cuerpo += '<p class="nota-suave" style="margin:0 0 12px">Todavía no hay compras en los últimos ' +
+        VENTANA_METRICAS + " días para promediar.</p>";
+    } else {
+      cuerpo += '<div class="rend-dato"><b>' + fmtDias(compra.promedio) + "</b> promedio · " +
+        compra.n + (compra.n === 1 ? " compra" : " compras") + "</div>";
+    }
+    if (compra.peor) {
+      const p = compra.peor.p;
+      cuerpo += '<button type="button" class="rend-peor" data-id="' + esc(p.id) + '">' +
+        "Sin comprar hace <b>" + compra.peor.dias + (compra.peor.dias === 1 ? " día" : " días") + "</b>: " +
+        esc(p.numero || "borrador") + " · " + esc(p.obraNombre) + "</button>";
+    }
+
+    cuerpo += '<div class="rend-sub">Cumplimiento de proveedores</div>';
+    if (!provs.length) {
+      cuerpo += '<p class="nota-suave" style="margin:0">Hacen falta al menos dos pedidos cerrados ' +
+        "por proveedor para poder compararlos.</p>";
+    } else {
+      cuerpo += provs.slice(0, 8).map((r) => {
+        const detalle = [];
+        if (r.tarde) detalle.push(r.tarde + " tarde (" + fmtDias(r.sumaTarde / r.tarde) + " promedio)");
+        if (r.vencidos) detalle.push(r.vencidos + " sin entregar y vencido" + (r.vencidos > 1 ? "s" : ""));
+        const mal = r.vencidos || r.tarde;
+        // Sin entregas cerradas todavía, "0/0 a tiempo" no dice nada: se
+        // muestra directamente lo que está vencido.
+        const marca = r.cerrados
+          ? r.aTiempo + "/" + r.cerrados + " a tiempo"
+          : r.vencidos + " vencido" + (r.vencidos > 1 ? "s" : "");
+        return '<div class="rend-prov"><div class="rp-cab">' +
+          '<span class="rp-nombre">' + esc(r.nombre) + "</span>" +
+          '<span class="rp-marca' + (mal ? " mal" : " bien") + '">' + marca + "</span></div>" +
+          (detalle.length ? '<div class="rp-detalle">' + detalle.join(" · ") + "</div>" : "") +
+        "</div>";
+      }).join("");
+    }
+
+    return '<div class="bloque bloque-rend">' +
+      '<button type="button" class="rend-cab" id="btn-rendimiento" aria-expanded="' + abierto + '">' +
+        '<span class="rend-titulo">Rendimiento · últimos ' + VENTANA_METRICAS + " días</span>" +
+        '<span class="rend-flecha">' + (abierto ? "▲" : "▼") + "</span></button>" +
+      '<div class="rend-cuerpo' + (abierto ? "" : " oculto") + '">' + cuerpo + "</div></div>";
   }
 
   function filaObra(o) {
@@ -2411,8 +2565,10 @@ window.PO = window.PO || {};
   function renderTabUsuarios() {
     const cont = $("gestion-contenido");
     cont.innerHTML =
-      '<p class="nota-suave" style="margin-bottom:10px">Los usuarios se registran solos con los códigos de invitación ' +
-      "(director / admin / control). Acá les cambiás el rol o los desactivás. " +
+      '<button type="button" class="btn btn-primario btn-bloque" id="btn-nuevo-usuario">+ Agregar usuario</button>' +
+      '<p class="nota-suave" style="margin:10px 0">Le creás la cuenta y le pasás la contraseña, o que se ' +
+      "registre solo con el código de invitación. Acá le cambiás el rol, le mandás el mail para " +
+      "rehacer la contraseña, lo desactivás o lo borrás. " +
       "La asignación de obras a cada director se hace en la pestaña Obras.</p>" +
       '<ul class="lista-gestion">' +
       (estado.usuarios.length ? estado.usuarios.map((x) => {
@@ -2426,6 +2582,8 @@ window.PO = window.PO || {};
               ["director", "admin", "control"].map((r) =>
                 '<option value="' + r + '"' + (x.rol === r ? " selected" : "") + ">" + r + "</option>").join("") +
             "</select>" +
+            '<button type="button" class="btn btn-ghost btn-chico usuario-clave" data-uid="' + esc(x.uid) +
+            '">Contraseña</button>' +
             '<button type="button" class="btn btn-ghost btn-chico usuario-activo" data-uid="' + esc(x.uid) +
             '" data-activo="' + (x.activo === false ? "0" : "1") + '"' + (soyYo ? " disabled" : "") + ">" +
             (x.activo === false ? "Activar" : "Desactivar") + "</button>" +
@@ -2456,6 +2614,22 @@ window.PO = window.PO || {};
         } catch (e) { toast("No se pudo actualizar: " + (e.message || e)); }
       })
     );
+    cont.querySelectorAll(".usuario-clave").forEach((b) =>
+      b.addEventListener("click", async () => {
+        const x = estado.usuarios.find((y) => y.uid === b.dataset.uid);
+        if (!x) return;
+        if (!confirm("Le mandamos a " + x.nombre + " un mail a " + x.email +
+          " para que ponga una contraseña nueva.\n\nLa actual sigue funcionando hasta que la cambie.")) return;
+        b.disabled = true;
+        try {
+          await PO.fb.resetearPassword(x.email);
+          toast("Mail enviado a " + x.email + ".");
+        } catch (e) {
+          toast("No se pudo enviar: " + (e.message || e));
+        }
+        b.disabled = false;
+      })
+    );
     cont.querySelectorAll(".usuario-borrar").forEach((b) =>
       b.addEventListener("click", async () => {
         const x = estado.usuarios.find((y) => y.uid === b.dataset.uid);
@@ -2465,13 +2639,69 @@ window.PO = window.PO || {};
           ? "\n\nOJO: hizo " + pedidos + " pedido(s). Quedan en el historial con su " +
             "nombre, pero se pierde el perfil. Si trabajó de verdad, mejor desactivarlo."
           : "";
-        if (!confirm("¿Borrar a " + x.nombre + "?" + aviso)) return;
+        if (!confirm("¿Borrar a " + x.nombre + "?" + aviso +
+          "\n\nNo va a poder entrar más, pero su email queda registrado en Firebase: " +
+          "para volver a darle acceso hay que crearlo con otro mail o que se registre con el código.")) return;
         try {
           await PO.store.borrarUsuario(x.uid);
           toast("Usuario borrado.");
         } catch (e) { toast("No se pudo borrar: " + (e.message || e)); }
       })
     );
+
+    $("btn-nuevo-usuario").addEventListener("click", abrirModalUsuario);
+  }
+
+  /* --- Alta de usuario --- */
+
+  function abrirModalUsuario() {
+    $("nu-nombre").value = "";
+    $("nu-email").value = "";
+    $("nu-pass").value = passSugerida();
+    setSegmentado("seg-nu-rol", "director");
+    mostrarError("nu-error", "");
+    $("nu-crear").disabled = false;
+    $("nu-crear").textContent = "Crear usuario";
+    abrirModal("modal-usuario");
+  }
+
+  /** Contraseña provisional fácil de dictar por WhatsApp: sin caracteres que
+      se confundan (l/1, O/0) y con un número al final. */
+  function passSugerida() {
+    const silabas = ["ca", "sa", "to", "re", "ma", "lu", "pi", "ver", "sol", "tra"];
+    let s = "";
+    for (let i = 0; i < 3; i++) s += silabas[Math.floor(Math.random() * silabas.length)];
+    return s + Math.floor(Math.random() * 90 + 10);
+  }
+
+  async function crearUsuarioNuevo() {
+    const nombre = $("nu-nombre").value.trim();
+    const email = $("nu-email").value.trim().toLowerCase();
+    const password = $("nu-pass").value;
+    const rol = valorSegmentado("seg-nu-rol", "director");
+
+    if (!nombre) { mostrarError("nu-error", "Poné el nombre y apellido."); return; }
+    if (!email || !email.includes("@")) { mostrarError("nu-error", "Poné un email válido."); return; }
+    if (password.length < 6) { mostrarError("nu-error", "La contraseña necesita 6 caracteres o más."); return; }
+    mostrarError("nu-error", "");
+
+    const b = $("nu-crear");
+    b.disabled = true;
+    b.textContent = "Creando…";
+    try {
+      await PO.fb.crearOtroUsuario({ email, password, nombre, rol });
+      cerrarModal("modal-usuario");
+      toast(nombre + " ya puede entrar con " + email + ".");
+    } catch (e) {
+      const cod = e && e.code;
+      mostrarError("nu-error",
+        cod === "auth/email-already-in-use" ? "Ese email ya tiene cuenta en la app." :
+        cod === "auth/invalid-email" ? "Ese email no es válido." :
+        cod === "auth/weak-password" ? "La contraseña es muy débil: probá con una más larga." :
+        "No se pudo crear: " + (e.message || e));
+      b.disabled = false;
+      b.textContent = "Crear usuario";
+    }
   }
 
   /* ---------------------------------------------------------------- perfil - */

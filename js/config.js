@@ -8,7 +8,7 @@ window.APP_CONFIG = {
   /* Versión visible en Perfil. Sirve para saber si un celular está corriendo
      la última versión o quedó con una cacheada. Subirla en cada deploy que
      toque HTML/CSS/JS, igual que el CACHE del service-worker.js. */
-  VERSION: "v26",
+  VERSION: "v27",
 
   /* Códigos de invitación para crear cuenta. El código define el rol inicial:
      - "director" → director de obra: crea pedidos para SUS obras asignadas,

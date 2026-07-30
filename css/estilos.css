@@ -389,6 +389,15 @@ body.hay-offline .topbar { top: 32px; }
   margin-bottom: 7px;
 }
 
+/* Aclaración debajo de un campo: es texto corrido, no una etiqueta. */
+.campo > span.campo-ayuda {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12.5px;
+  color: var(--texto-suave);
+  margin: 5px 0 0;
+}
+
 .input {
   width: 100%;
   background: var(--bg-input);
@@ -877,6 +886,82 @@ select.input option { background: var(--bg-2); color: var(--text); }
 
 .bloque-alerta { border-left: 4px solid var(--peligro); }
 .bloque-alerta h4 { color: var(--peligro); }
+
+/* Rendimiento: se despliega solo si a alguien le interesa mirarlo. */
+.bloque-rend { padding-bottom: 14px; }
+.rend-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.rend-titulo {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--texto-suave);
+}
+.rend-flecha { color: var(--texto-suave); font-size: 12px; }
+
+.rend-cuerpo { margin-top: 10px; }
+.rend-sub {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--texto-suave);
+  margin: 4px 0 6px;
+}
+.rend-cuerpo .rend-sub:not(:first-child) {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--borde);
+}
+.rend-dato { font-size: 15px; }
+.rend-dato b { font-size: 19px; font-weight: 700; }
+
+.rend-peor {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--borde);
+  border-left: 3px solid var(--alerta);
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--texto);
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.rend-peor b { color: var(--alerta); }
+
+.rend-prov { padding: 7px 0; border-bottom: 1px solid var(--borde); }
+.rend-prov:last-child { border-bottom: none; }
+.rend-prov .rp-cab {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.rp-nombre { font-size: 14.5px; font-weight: 500; overflow-wrap: anywhere; }
+.rp-marca { font-size: 13px; font-weight: 700; white-space: nowrap; }
+.rp-marca.bien { color: var(--ok); }
+.rp-marca.mal { color: var(--alerta); }
+.rp-detalle { font-size: 12.5px; color: var(--texto-suave); margin-top: 1px; overflow-wrap: anywhere; }
 
 /* Una obra por fila: quien la conduce y que esta esperando. */
 .obra-fila {

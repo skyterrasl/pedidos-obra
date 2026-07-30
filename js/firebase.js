@@ -51,6 +51,39 @@ PO.fb = {
     }
   },
 
+  /** Da de alta a otro usuario SIN cerrar la sesión de quien lo está creando.
+      Firebase, al crear una cuenta, loguea automáticamente a esa cuenta en la
+      app: por eso el alta se hace en una segunda instancia descartable, y el
+      perfil se escribe desde ahí (así el uid coincide y las reglas lo aceptan
+      sin darle a nadie permiso para escribir perfiles ajenos).
+      Devuelve el uid del usuario nuevo. */
+  async crearOtroUsuario({ email, password, nombre, rol }) {
+    const cfg = window.FIREBASE_CONFIG;
+    const nombreApp = "alta-usuario";
+    const previa = firebase.apps.find((a) => a.name === nombreApp);
+    const app2 = previa || firebase.initializeApp(cfg, nombreApp);
+
+    try {
+      const cred = await app2.auth().createUserWithEmailAndPassword(email, password);
+      const uid = cred.user.uid;
+      await app2.firestore().collection("usuarios").doc(uid).set({
+        nombre, email, rol, activo: true,
+        whatsapp: "",
+        avisos: { pedido_nuevo: true, pedido_proveedor: true, recepcion: true },
+        creado: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      return uid;
+    } finally {
+      // Pase lo que pase, la instancia se cierra: no puede quedar una sesión
+      // paralela viva con la cuenta recién creada.
+      try { await app2.auth().signOut(); } catch (e) { /* ya estaba cerrada */ }
+      try { await app2.delete(); } catch (e) { /* ya estaba borrada */ }
+    }
+  },
+
+  /** Manda el mail de "restablecer contraseña" a la dirección indicada. */
+  resetearPassword(email) { return this.auth.sendPasswordResetEmail(email); },
+
   /** Marca de tiempo del servidor (solo para campos de primer nivel). */
   tsServidor() { return firebase.firestore.FieldValue.serverTimestamp(); },
 
