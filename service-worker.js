@@ -12,7 +12,7 @@
    ¿Cambiaste archivos y no ves la novedad? Subí la versión (v1 → v2).
    ============================================================================ */
 
-const CACHE = "pedidos-obra-v29";
+const CACHE = "pedidos-obra-v30";
 
 const APP_SHELL = [
   "./",
@@ -33,6 +33,7 @@ const APP_SHELL = [
   "./js/export.js",
   "./js/seed.js",
   "./js/materiales.js",
+  "./js/push.js",
   "./js/app.js",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png"
@@ -51,6 +52,47 @@ self.addEventListener("activate", (e) => {
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
     ).then(() => self.clients.claim())
+  );
+});
+
+/* --------------------------------------------------------------- push ----
+   Llega aunque la app esté cerrada. En iPhone solo si está agregada a la
+   pantalla de inicio (lo exige iOS). El cuerpo lo arma el servidor. */
+
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { cuerpo: e.data ? e.data.text() : "" }; }
+
+  e.waitUntil(
+    self.registration.showNotification(d.titulo || "Pedidos de Obra", {
+      body: d.cuerpo || "",
+      icon: "./assets/icons/icon-192.png",
+      badge: "./assets/icons/icon-192.png",
+      // Mismo tag: si llegan varios avisos del mismo pedido, se reemplazan
+      // en vez de apilarse.
+      tag: d.url || "pedidos-obra",
+      renotify: true,
+      data: { url: d.url || "./" }
+    })
+  );
+});
+
+/* Al tocar la notificación: si la app ya está abierta se la trae al frente
+   (y se le avisa a dónde ir); si no, se abre. */
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const destino = (e.notification.data && e.notification.data.url) || "./";
+
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((lista) => {
+      for (const c of lista) {
+        if (c.url.includes(self.registration.scope)) {
+          c.postMessage({ tipo: "abrir", url: destino });
+          return c.focus();
+        }
+      }
+      return self.clients.openWindow(destino);
+    })
   );
 });
 

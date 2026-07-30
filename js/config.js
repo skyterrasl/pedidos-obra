@@ -8,7 +8,7 @@ window.APP_CONFIG = {
   /* Versión visible en Perfil. Sirve para saber si un celular está corriendo
      la última versión o quedó con una cacheada. Subirla en cada deploy que
      toque HTML/CSS/JS, igual que el CACHE del service-worker.js. */
-  VERSION: "v29",
+  VERSION: "v30",
 
   /* Códigos de invitación para crear cuenta. El código define el rol inicial:
      - "director" → director de obra: crea pedidos para SUS obras asignadas,
@@ -38,6 +38,16 @@ window.APP_CONFIG = {
      WhatsApp probando la URL a ciegas. El workflow de n8n valida esta
      misma clave antes de mandar cualquier mensaje. */
   WEBHOOK_KEY: "5c6c1988aee952715b4fc1c49ff83d52",
+
+  /* Notificaciones push (las del celular, sin depender de WhatsApp).
+     El envío lo hace un servicio propio en el VPS porque el navegador solo
+     puede suscribirse: firmar y entregar requiere la clave privada VAPID,
+     que vive allá. Esta de acá es la PÚBLICA — va en el cliente por diseño,
+     no sirve para mandar nada por sí sola.
+     En iPhone solo funciona con la app agregada a la pantalla de inicio
+     (requisito de iOS, no nuestro). */
+  PUSH_URL: "https://srv1795124.hstgr.cloud/push/enviar",
+  VAPID_PUBLICA: "BH0jQwn6fVsAs2cSf8s_XrBU3q3RkAn73nRLCXwf3PEj48d8WPxRhdwY5REeOEhFgJmzcSzdvm-ev1E068l9EwI",
 
   /* Unidades sugeridas al cargar ítems (se puede escribir cualquier otra). */
   UNIDADES: ["un.", "m²", "m³", "kg", "bolsa", "pallet", "ml", "lts"],

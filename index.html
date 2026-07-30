@@ -315,6 +315,12 @@
           <p class="form-error oculto" id="perfil-error"></p>
           <button type="submit" class="btn btn-primario btn-bloque" id="btn-guardar-perfil">Guardar perfil</button>
         </form>
+
+        <div class="campo" id="bloque-push" style="margin-top:18px">
+          <span class="campo-titulo">Avisos en este celular</span>
+          <p class="nota-suave" id="push-estado">Revisando…</p>
+          <button type="button" class="btn btn-ghost btn-bloque oculto" id="btn-push">Activar</button>
+        </div>
         <p class="nota-suave perfil-rol" id="perfil-rol"></p>
         <p class="nota-suave" id="perfil-version"></p>
       </section>
@@ -500,6 +506,7 @@
   <script src="js/export.js"></script>
   <script src="js/seed.js"></script>
   <script src="js/materiales.js"></script>
+  <script src="js/push.js"></script>
   <script src="js/app.js"></script>
 
   <!-- Registro del Service Worker (PWA / offline). Ruta relativa: la app

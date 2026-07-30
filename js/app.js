@@ -416,7 +416,15 @@ window.PO = window.PO || {};
     }
 
     mostrarPantalla("app");
-    ir("dashboard");
+
+    // Si la app se abrió tocando una notificación, va directo a ese pedido.
+    const pedidoUrl = new URLSearchParams(location.search).get("pedido");
+    if (pedidoUrl) {
+      history.replaceState(null, "", location.pathname);
+      abrirDetalle(pedidoUrl);
+    } else {
+      ir("dashboard");
+    }
   }
 
   function refrescarVista() {
@@ -538,6 +546,18 @@ window.PO = window.PO || {};
 
     // Perfil
     $("form-perfil").addEventListener("submit", onGuardarPerfil);
+    $("btn-push").addEventListener("click", alternarPush);
+
+    // Al tocar una notificación con la app abierta, el service worker avisa
+    // a qué pedido ir.
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.addEventListener("message", (ev) => {
+        const d = ev.data || {};
+        if (d.tipo !== "abrir" || !d.url) return;
+        const id = (d.url.split("pedido=")[1] || "").split("&")[0];
+        if (id && estado.usuario) abrirDetalle(id);
+      });
+    }
 
     // Campana
     $("btn-campana").addEventListener("click", () => {
@@ -2792,6 +2812,7 @@ window.PO = window.PO || {};
     });
     $("perfil-rol").textContent = "Rol: " + rolEtiqueta(u.rol) +
       ". El rol lo administra administración.";
+    renderPush();
     // Versión: sirve para saber si el celular quedó con una versión vieja
     // cacheada (si acá dice una versión distinta a la última, hay que
     // cerrar y volver a abrir la app).
@@ -2800,6 +2821,56 @@ window.PO = window.PO || {};
         ? "catálogo de materiales cargado"
         : "sin catálogo de materiales");
     mostrarError("perfil-error", "");
+  }
+
+  /* --- Avisos push en este dispositivo ------------------------------------
+         Se guardan por dispositivo, no por usuario: el mismo director puede
+         tener el celular de obra y el de su casa. --- */
+
+  async function renderPush() {
+    const txt = $("push-estado");
+    const btn = $("btn-push");
+    const traba = PO.push.impedimento();
+
+    if (traba && !await PO.push.estaActivo()) {
+      txt.textContent = traba;
+      btn.classList.add("oculto");
+      return;
+    }
+
+    const activo = await PO.push.estaActivo();
+    txt.textContent = activo
+      ? "Activados. Te van a llegar acá aunque tengas la app cerrada."
+      : "Recibí los avisos como notificación del teléfono, sin depender del WhatsApp.";
+    btn.textContent = activo ? "Desactivar en este celular" : "Activar en este celular";
+    btn.classList.remove("oculto");
+    btn.disabled = false;
+  }
+
+  async function alternarPush() {
+    const btn = $("btn-push");
+    btn.disabled = true;
+    try {
+      if (await PO.push.estaActivo()) {
+        const endpoint = await PO.push.desactivar();
+        if (endpoint) await PO.store.quitarPushSub(estado.usuario.uid, endpoint);
+        toast("Avisos desactivados en este celular.");
+      } else {
+        const sub = await PO.push.activar();
+        await PO.store.agregarPushSub(estado.usuario.uid, sub);
+        // Uno de prueba para que se vea que quedó andando.
+        await PO.push.enviar({
+          titulo: "Listo, ya está",
+          cuerpo: "Los avisos de Pedidos de Obra te van a llegar acá.",
+          url: "./",
+          subs: [sub]
+        });
+        toast("Avisos activados. Te mandamos uno de prueba.");
+      }
+    } catch (e) {
+      toast(e.message || "No se pudieron cambiar los avisos.");
+    }
+    renderPush();
   }
 
   async function onGuardarPerfil(e) {

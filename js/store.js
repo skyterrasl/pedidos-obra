@@ -53,6 +53,28 @@ PO.store = {
     await PO.fb.db.collection("usuarios").doc(uid).update(cambios);
   },
 
+  /** Suma un dispositivo a los que reciben avisos push. Se guarda la
+      suscripción completa porque el servicio del VPS la necesita entera
+      (endpoint + claves de cifrado del navegador). */
+  async agregarPushSub(uid, sub) {
+    const ref = PO.fb.db.collection("usuarios").doc(uid);
+    const doc = await ref.get();
+    const actuales = (doc.data() || {}).pushSubs || [];
+    if (actuales.some((s) => s.endpoint === sub.endpoint)) return;
+    // Tope defensivo: si alguien reinstala muchas veces, no crece sin fin.
+    const subs = actuales.concat([sub]).slice(-10);
+    await ref.update({ pushSubs: subs });
+  },
+
+  /** Saca un dispositivo (desactivado a mano, o reportado como vencido). */
+  async quitarPushSub(uid, endpoint) {
+    const ref = PO.fb.db.collection("usuarios").doc(uid);
+    const doc = await ref.get();
+    const actuales = (doc.data() || {}).pushSubs || [];
+    const subs = actuales.filter((s) => s.endpoint !== endpoint);
+    if (subs.length !== actuales.length) await ref.update({ pushSubs: subs });
+  },
+
   /** Borra el perfil de un usuario (solo admin, y nunca el propio). No borra
       la cuenta de acceso en Firebase Auth: si esa persona vuelve a entrar,
       se le crea un perfil nuevo con el código de invitación que use. */
@@ -314,7 +336,35 @@ PO.store = {
         }).catch(() => {});
       }
 
-      // 2) Webhook (n8n → WhatsApp). Toggle de preferencia por tipo de aviso.
+      // 2) Push al celular. Respeta el mismo toggle de preferencias que el
+      //    WhatsApp, pero no necesita que la persona tenga número cargado.
+      const toggleAviso = {
+        enviado: "pedido_nuevo",
+        pedido_proveedor: "pedido_proveedor",
+        entrega_parcial: "recepcion",
+        entregado: "recepcion"
+      }[evento] || null;
+
+      const conPush = destinatarios.filter((u) =>
+        (u.pushSubs || []).length && (!toggleAviso || !u.avisos || u.avisos[toggleAviso] !== false));
+
+      if (conPush.length && PO.push) {
+        const subs = conPush.flatMap((u) => u.pushSubs);
+        PO.push.enviar({
+          titulo: (pedido.numero || "Pedido") + " · " + pedido.obraNombre,
+          cuerpo: texto,
+          url: "./?pedido=" + pedido.id,
+          subs
+        }).then((r) => {
+          // Los dispositivos que ya no existen se limpian del perfil.
+          (r.vencidos || []).forEach((endpoint) => {
+            const dueno = conPush.find((u) => (u.pushSubs || []).some((s) => s.endpoint === endpoint));
+            if (dueno) this.quitarPushSub(dueno.uid, endpoint).catch(() => {});
+          });
+        }).catch(() => {});
+      }
+
+      // 3) Webhook (n8n → WhatsApp). Toggle de preferencia por tipo de aviso.
       const url = (window.APP_CONFIG || {}).WEBHOOK_URL;
       if (!url) return;
       const toggle = {
