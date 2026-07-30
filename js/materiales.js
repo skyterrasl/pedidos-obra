@@ -1,13 +1,18 @@
 /* ============================================================================
    PEDIDOS DE OBRA · SKY TERRA — materiales.js
-   Catálogo de materiales por rubro, sacado del "LISTADO DE MATERIALES.xlsx"
-   de Iván (hojas HARAS/corralón y SANITARIOS, 2026-07-29).
+   Catálogo de materiales por rubro. De dónde salió cada uno:
+     MATERIALES GRUESOS / SANITARIOS  "LISTADO DE MATERIALES.xlsx" (2026-07-29)
+     MADERAS                          presupuesto de Maderera Newton (incluye
+                                      el material de encofrado, que viene del
+                                      mismo proveedor y se pide junto)
+     PINTURA                          lista de precios de la pinturería
+     REVESTIMIENTO                    historial de pedidos al proveedor
 
-   Alimenta el autocompletado al cargar un pedido de esos rubros: el director
-   escribe dos letras y elige de la lista, en vez de tipear todo el nombre.
-   Los materiales que ya se pidieron antes en esa obra/rubro aparecen primero.
+   Alimenta el selector al cargar un pedido de esos rubros: el director escribe
+   dos letras y elige de la lista, en vez de tipear todo el nombre. Los
+   materiales que ya se pidieron antes en esa obra/rubro aparecen primero.
 
-   Para actualizarlo: volver a exportar del Excel y regenerar este archivo.
+   Para actualizarlo: volver a exportar la fuente y regenerar este archivo.
    ============================================================================ */
 
 window.MATERIALES_CATALOGO = {
@@ -677,5 +682,80 @@ window.MATERIALES_CATALOGO = {
     "WATERPLAST tanque cisterna modular c/nervio SINGLE 1000lts (CMS1000)",
     "WATERPLAST tanque cisterna SINGLE 750lt 90x144 (TCS750)",
     "WATERPLAST tanque Flat patagonico arena 1000 LTS 153 X78 (TP1000)"
+  ],
+  "MADERAS": [
+    "CABEZAL H20 GALVANIZADO",
+    "CABEZAL SIMPLE GALVANIZADO",
+    "ENCOFRADO ELLIOT CEPILLADO 1\"x4\"",
+    "ENCOFRADO ELLIOT CEPILLADO 1\"x5\"",
+    "ENCOFRADO ELLIOT CEPILLADO 1\"x6\"",
+    "FENOLICO 18MM C/FILM 11 LAMINAS MIRALUZ",
+    "FENOLICO 18MM C/FILM 180G 11L RIO CLARO",
+    "FENOLICO 18MM PINO CAL 4 IND",
+    "HORQUILLA GALVANIZADA",
+    "PINO ELLIOTIS ENCOFRADO BRUTO 3\"x3\"x3,05M",
+    "PINO ELLIOTIS ENCOFRADO BRUTO 3\"x3\"x3,66M",
+    "PUNTAL GALVANIZADO 1.80 A 3.10MTS",
+    "PUNTAL GALVANIZADO 2.10 A 3.80MTS",
+    "PUNTAL GALVANIZADO 3.00 A 5.00MTS",
+    "SALIGNA BRUTA 1\"x4\"x3,10M",
+    "SALIGNA BRUTA 1\"x4\"x3,70M",
+    "SALIGNA BRUTA 1\"x4\"x4,00M",
+    "SALIGNA BRUTA 1\"x5\"x3,10M",
+    "SALIGNA BRUTA 1\"x5\"x3,70M",
+    "SALIGNA BRUTA 1\"x5\"x4,00M",
+    "SALIGNA BRUTA 1\"x6\"x3,10M",
+    "SALIGNA BRUTA 1\"x6\"x3,70M",
+    "SALIGNA BRUTA 1\"x6\"x4,00M",
+    "TRIPODE GALVANIZADO",
+    "TUERCA 3 ALAS GALVANIZADA",
+    "VARILLA ROSCADA 17MM X 2MTS",
+    "VIGA H20 3.5MTS",
+    "VIGA H20 3MTS",
+    "VIGA H20 4.1MTS",
+    "VIGA H20 5.4MTS"
+  ],
+  "PINTURA": [
+    "AGUARRAS THAXORRAS X 5LT",
+    "AGUARRAS THAXORRAS X 900CC",
+    "CARTON CORRUGADO ROLLO 0,90 X 25MT",
+    "CASABLANCA CASA SECA IMPERM POLIURETANO X 20KG",
+    "CASABLANCA ESM SINT MULTIACCION 3EN1 BLANCO SATINADO X 4LT",
+    "CASABLANCA ESM SINT MULTIACCION 3EN1 NEGRO MATE X 4LT",
+    "CASABLANCA ESM SINT MULTIACCION 3EN1 NEGRO SATINADO X 4LT",
+    "CASABLANCA LATEX PRO INTERIOR X 20LT",
+    "CASABLANCA PERFORMANCE INTERIOR MATE ANTIBACTERIAL BLANCO X 20LT",
+    "CASASECA GRIETAS Y JUNTAS SELLADOR X 450GR",
+    "CINTA PAPEL C903 36X40",
+    "CINTA PAPEL UV 36X40",
+    "CINTA PAPEL UV 48X40",
+    "COBERTOR PLASTICO 5X3",
+    "ENDUIDO CASABLANCA INTERIOR X 25KG",
+    "ENDUIDO SINTEPLAST OBRAPLAST X 20",
+    "LIJA AL AGUA DOBLE A",
+    "LIQUITECH MEMBRANA CAUCHO GOMA X 20LT",
+    "MASILLA PARA PLACA CASABLANCA X 32KG",
+    "MINIROD MC PINT FIB06",
+    "PINCEL EL GALGO GOLD N°15",
+    "PINCEL EL GALGO GOLD N°25",
+    "PINCEL MC PIN V1 PROF 1805 N°20",
+    "ROD EL GALGO ANTIGOTA N°22",
+    "ROD NEVADO PLUS 50 22CM",
+    "SIKACRYL CARTUCHO BLANCO X 300CC",
+    "VENDA PARA FISURAS 20CM X 25MTS",
+    "YESO PARIS X 5KG"
+  ],
+  "REVESTIMIENTO": [
+    "5000 PU BLANCO",
+    "BLOQUES Y PIEDRAS",
+    "CARTUCHO PU 40C",
+    "FIJATEX E PLUS",
+    "LATEX X 20",
+    "MADEFER",
+    "PROTEX 216",
+    "PROTEX HIDRO",
+    "PROTEX TAP",
+    "REDFIBRA X 90",
+    "SEAL 77 FLEX"
   ]
 };
