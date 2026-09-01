@@ -1,45 +1,36 @@
-/* ============================================================================
-   PEDIDOS DE OBRA · SKY TERRA — estilos.css
-   Mobile-first, siguiendo skyterra-tono-y-estilo.md: base oscura, plateado
-   como acento firma, azul del arco con moderación, Poppins como única
-   tipografía, líneas sólidas finas y cuerpo de 16px.
-   ============================================================================ */
-
-/* Poppins servida desde la propia app: en obra sin señal la tipografía de
-   marca se ve igual (40 KB, precacheada por el service worker). */
-@font-face { font-family: "Poppins"; font-style: normal; font-weight: 200;
-  font-display: swap; src: url("../assets/fuentes/poppins-200.woff2") format("woff2"); }
-@font-face { font-family: "Poppins"; font-style: normal; font-weight: 300;
-  font-display: swap; src: url("../assets/fuentes/poppins-300.woff2") format("woff2"); }
-@font-face { font-family: "Poppins"; font-style: normal; font-weight: 400;
-  font-display: swap; src: url("../assets/fuentes/poppins-400.woff2") format("woff2"); }
-@font-face { font-family: "Poppins"; font-style: normal; font-weight: 500;
-  font-display: swap; src: url("../assets/fuentes/poppins-500.woff2") format("woff2"); }
-@font-face { font-family: "Poppins"; font-style: normal; font-weight: 600;
-  font-display: swap; src: url("../assets/fuentes/poppins-600.woff2") format("woff2"); }
-
 :root {
-  /* --- Tokens de marca (skyterra-tono-y-estilo.md) --- */
-  --bg: #0d0d0d;
-  --bg-2: #141414;
-  --bg-input: #161616;
-  --text: #f7f5f0;
-  --text-2: #c3c9ce;          /* PLATEADO: el acento firma */
-  --text-3: #8a8f94;
-  --accent: #3764b1;          /* azul del arco */
-  --accent-bright: #4478c8;
-  --line: rgba(195, 201, 206, 0.14);
-  --line-strong: rgba(195, 201, 206, 0.28);
-  --cta-bg: #f7f5f0;
-  --cta-text: #0b0b0b;
-  --ok: #4ba36a;
-  --warn: #d1a24a;
-  --err: #d05a5a;
+  /* --- Paleta del ERP Sky Terra Gestión: los mismos tokens, para que los dos
+         módulos se lean como un solo sistema. --- */
+  --petroleo: #1B2A3B;
+  --petroleo-2: #24374D;
+  --crema: #F5F2ED;
+  --arena: #C8B89A;
+  --dorado: #B8973E;
+  --gris: #E8E4DF;
+  --terracota: #9E6B4A;
 
-  /* --- Alias que usa el resto de la hoja (mapeados a los tokens) --- */
+  /* --- Alias que usa el resto de la hoja --- */
+  --bg: var(--crema);
+  --bg-2: #FFFFFF;            /* superficie de tarjeta */
+  --bg-input: #FFFFFF;
+  --text: #1B2A3B;            /* petróleo: el texto principal */
+  --text-2: #4A4A4A;
+  --text-3: #6E6862;
+  --accent: #1B2A3B;          /* lo interactivo va en petróleo: el dorado como
+                                 texto chico no llega al contraste mínimo */
+  --accent-bright: #24374D;
+  --line: #DED7CC;
+  --line-strong: #C8BFB2;
+  --cta-bg: #1B2A3B;
+  --cta-text: #F5F2ED;
+  --ok: #2E7D32;
+  --warn: #945E06;            /* el #D4830A del ERP, oscurecido para leerse
+                                 sobre crema */
+  --err: #C0392B;
+
   --acento: var(--accent);
   --acento-oscuro: var(--accent-bright);
-  --acento-suave: rgba(55, 100, 177, 0.18);
+  --acento-suave: rgba(184, 151, 62, 0.18);   /* velo dorado */
   --fondo: var(--bg);
   --tarjeta: var(--bg-2);
   --texto: var(--text);
@@ -47,18 +38,18 @@
   --borde: var(--line);
   --peligro: var(--err);
   --alerta: var(--warn);
-  --radio: 10px;
-  --sombra: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --radio: 12px;
+  --sombra: 0 1px 2px rgba(27, 42, 59, 0.06), 0 6px 20px rgba(27, 42, 59, 0.05);
 
-  /* Estados: sobre fondo oscuro, con el color en el texto y un velo tenue
-     detrás (nada de pasteles claros, que en dark se ven como manchas). */
-  --e-borrador-bg: rgba(195, 201, 206, 0.10);  --e-borrador-tx: #c3c9ce;
-  --e-enviado-bg: rgba(209, 162, 74, 0.16);    --e-enviado-tx: #e0b969;
-  --e-recibido-bg: rgba(90, 170, 190, 0.16);   --e-recibido-tx: #7fc3d4;
-  --e-proveedor-bg: rgba(55, 100, 177, 0.22);  --e-proveedor-tx: #8fb2e6;
-  --e-parcial-bg: rgba(140, 110, 200, 0.20);   --e-parcial-tx: #b9a3ea;
-  --e-entregado-bg: rgba(75, 163, 106, 0.18);  --e-entregado-tx: #7fcb98;
-  --e-cancelado-bg: rgba(195, 201, 206, 0.08); --e-cancelado-tx: #8a8f94;
+  /* Estados: sobre fondo claro se leen mejor como chip —velo del color y
+     texto oscuro del mismo tono— que como texto de color suelto. */
+  --e-borrador-bg: #E8E4DF;  --e-borrador-tx: #4A4A4A;
+  --e-enviado-bg: #FAEBD0;   --e-enviado-tx: #8A5A06;
+  --e-recibido-bg: #DDEAEE;  --e-recibido-tx: #1F5566;
+  --e-proveedor-bg: #DDE5EE; --e-proveedor-tx: #1B2A3B;
+  --e-parcial-bg: #EDE4F2;   --e-parcial-tx: #5B3A72;
+  --e-entregado-bg: #DCEEDD; --e-entregado-tx: #1F5E22;
+  --e-cancelado-bg: #E8E4DF; --e-cancelado-tx: #655F59;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -79,7 +70,7 @@ html { -webkit-text-size-adjust: 100%; }
 
 body {
   font-family: "Poppins", system-ui, sans-serif;
-  font-weight: 300;
+  font-weight: 400;
   background: var(--fondo);
   color: var(--texto);
   font-size: 16px;
@@ -133,8 +124,8 @@ code {
   width: 52px;
   height: 52px;
   border-radius: 10px;
-  background: var(--accent);
-  color: var(--text);
+  background: var(--petroleo);
+  color: var(--crema);
   font-weight: 500;
   font-size: 20px;
   letter-spacing: 0.08em;
@@ -185,7 +176,7 @@ code {
   right: 0;
   z-index: 60;
   background: var(--alerta);
-  color: var(--text);
+  color: var(--crema);
   font-size: 12.5px;
   font-weight: 600;
   text-align: center;
@@ -203,9 +194,9 @@ body.hay-offline .topbar { top: 32px; }
   position: sticky;
   top: 0;
   z-index: 50;
-  background: var(--bg-2);
-  color: var(--text);
-  border-bottom: 1px solid var(--line);
+  background: var(--petroleo);
+  color: var(--crema);
+  border-bottom: 1px solid var(--petroleo-2);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -221,16 +212,16 @@ body.hay-offline .topbar { top: 32px; }
 .topbar-derecha { display: flex; align-items: center; gap: 8px; }
 
 .topbar .btn-ghost {
-  color: var(--text);
-  border-color: var(--line-strong);
+  color: var(--crema);
+  border-color: rgba(245, 242, 237, 0.35);
   background: transparent;
 }
 
 .btn-campana {
   position: relative;
-  border: 1px solid var(--line-strong);
+  border: 1px solid rgba(245, 242, 237, 0.35);
   background: transparent;
-  color: var(--text);
+  color: var(--crema);
   border-radius: 10px;
   width: 48px;
   height: 48px;
@@ -247,7 +238,7 @@ body.hay-offline .topbar { top: 32px; }
   height: 19px;
   border-radius: 999px;
   background: var(--warn);
-  color: var(--text);
+  color: var(--crema);
   font-size: 11.5px;
   font-weight: 700;
   display: flex;
@@ -316,7 +307,7 @@ body.hay-offline .topbar { top: 32px; }
   border: 1px solid var(--borde);
 }
 
-.btn-peligro { background: var(--peligro); color: #0b0b0b; font-weight: 600; }
+.btn-peligro { background: var(--peligro); color: var(--crema); font-weight: 600; }
 
 .btn-bloque { display: block; width: 100%; margin-top: 6px; }
 .btn-chico { padding: 7px 12px; font-size: 13.5px; border-radius: 8px; }
