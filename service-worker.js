@@ -12,7 +12,7 @@
    ¿Cambiaste archivos y no ves la novedad? Subí la versión (v1 → v2).
    ============================================================================ */
 
-const CACHE = "pedidos-obra-v31";
+const CACHE = "pedidos-obra-v32";
 
 const APP_SHELL = [
   "./",
@@ -34,6 +34,7 @@ const APP_SHELL = [
   "./js/seed.js",
   "./js/materiales.js",
   "./js/push.js",
+  "./js/sso-erp.js",
   "./js/app.js",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png"
@@ -102,6 +103,10 @@ self.addEventListener("fetch", (e) => {
 
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // Firebase / CDN: red directa
+
+  // La API del ERP (el pase de entrada) nunca se cachea: un pase vencido
+  // servido desde el cache haría fallar el login sin motivo.
+  if (url.pathname.indexOf("/api/") === 0) return;
 
   // ¿Es parte del app shell? → cache-first (carga instantánea y offline).
   const base = new URL("./", self.location.href).pathname;

@@ -359,7 +359,21 @@ window.PO = window.PO || {};
   });
 
   async function onAuth(user) {
-    if (!user) { limpiarSesion(); mostrarPantalla("auth"); return; }
+    if (!user) {
+      limpiarSesion();
+      mostrarPantalla("auth");
+      // Dentro del ERP no se pide la contraseña otra vez: se entra con su
+      // sesión. Si ese usuario no tiene permiso acá, se le explica.
+      if (PO.sso && PO.sso.disponible()) {
+        mostrarError("login-error", "Entrando con tu usuario de Gestión…");
+        const r = await PO.sso.entrar();
+        if (r.ok) return;   // onAuth se vuelve a disparar, ya con sesión
+        mostrarError("login-error", r.sinAcceso
+          ? r.error + " Pedile a administración que te habilite."
+          : "No pudimos entrar con tu usuario de Gestión. Probá con tu email y contraseña.");
+      }
+      return;
+    }
     try {
       let perfil = await PO.store.obtenerUsuario(user.uid);
       if (!perfil && estado.registroPendiente) {
@@ -469,7 +483,11 @@ window.PO = window.PO || {};
     $("form-login").addEventListener("submit", onLogin);
     $("form-registro").addEventListener("submit", onRegistro);
     $("btn-olvide-pass").addEventListener("click", onOlvidePass);
-    $("btn-salir").addEventListener("click", () => PO.fb.auth.signOut());
+    $("btn-salir").addEventListener("click", async () => {
+      const volverAlErp = PO.sso && PO.sso.disponible();
+      await PO.fb.auth.signOut();
+      if (volverAlErp) PO.sso.volverAlErp();
+    });
 
     // Navegación
     document.querySelectorAll("#navbar .nav-item").forEach((b) =>
