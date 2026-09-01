@@ -349,8 +349,22 @@ window.PO = window.PO || {};
 
   /* ----------------------------------------------------------- arranque --- */
 
+  /* El equipo entra con su usuario de Gestión. Fuera del ERP esta pantalla no
+     le sirve a nadie, así que en vez de un login mudo dice a dónde ir. */
+  function avisarComoEntrar() {
+    const p = $("auth-como-entrar");
+    if (!p) return;
+    if (PO.sso && PO.sso.dentroDelErp()) {
+      p.textContent = "Entrás con tu usuario de Gestión.";
+      return;
+    }
+    p.innerHTML = 'Se entra desde <a href="https://gestion.skyterra.com.ar/pedidos/">' +
+      'gestion.skyterra.com.ar</a>, con tu usuario de Gestión.';
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     conectarEventos();
+    avisarComoEntrar();
     actualizarBannerConexion();
     window.addEventListener("online", actualizarBannerConexion);
     window.addEventListener("offline", actualizarBannerConexion);
