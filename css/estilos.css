@@ -449,7 +449,7 @@ select.input option { background: var(--bg-2); color: var(--text); }
   padding: 10px;
   cursor: pointer;
 }
-.seg-btn.activo { background: var(--accent); color: var(--text); font-weight: 500; }
+.seg-btn.activo { background: var(--accent); color: var(--cta-text); font-weight: 500; }
 
 .check-fila {
   display: flex;
@@ -1132,7 +1132,7 @@ select.input option { background: var(--bg-2); color: var(--text); }
   font-family: inherit;
   cursor: pointer;
 }
-.tab.activo { background: var(--accent); border-color: var(--accent); color: var(--text); }
+.tab.activo { background: var(--accent); border-color: var(--accent); color: var(--cta-text); }
 
 .gestion-form {
   background: var(--tarjeta);
@@ -1291,4 +1291,15 @@ select.input option { background: var(--bg-2); color: var(--text); }
   .contenido { padding-top: 22px; }
   .modal { align-items: center; }
   .dash-grid { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+/* Usuario que entra con su cuenta de Gestión: acá no se le toca nada, así que
+   en vez de botones que no harían efecto va la aclaración de dónde se administra. */
+.etiqueta-origen {
+  font-size: 12px;
+  color: var(--texto-suave);
+  background: var(--gris);
+  border-radius: 999px;
+  padding: 4px 10px;
+  white-space: nowrap;
 }

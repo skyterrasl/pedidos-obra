@@ -8,21 +8,20 @@ window.APP_CONFIG = {
   /* Versión visible en Perfil. Sirve para saber si un celular está corriendo
      la última versión o quedó con una cacheada. Subirla en cada deploy que
      toque HTML/CSS/JS, igual que el CACHE del service-worker.js. */
-  VERSION: "v32",
+  VERSION: "v33",
 
-  /* Códigos de invitación para crear cuenta. El código define el rol inicial:
-     - "director" → director de obra: crea pedidos para SUS obras asignadas,
-                    registra recepciones y sube fotos de remitos.
-     - "admin"    → administración: ve todo, gestiona compras, obras, rubros,
-                    proveedores y usuarios.
-     - "control"  → solo lectura: ve todo, no modifica nada.
-     Cambialos cuando quieras; el rol de cada usuario ya registrado lo
-     administra el admin desde Gestión → Usuarios. */
-  CODIGOS_INVITACION: {
-    "DIRECTOR-ST": "director",
-    "ADMIN-ST": "admin",
-    "CONTROL-ST": "control"
-  },
+  /* Registro abierto: APAGADO a propósito (vacío = nadie puede autoregistrarse).
+
+     Esto se sirve desde un repo público, así que un código acá es un código
+     que puede leer cualquiera — y con "admin" se veía toda la operación.
+     Hoy se entra por dos puertas mejores:
+       · con el usuario de Gestión (gestion.skyterra.com.ar/pedidos/), o
+       · con la cuenta que le crea administración desde Gestión → Usuarios.
+
+     Para reabrirlo temporalmente (por ejemplo, para dar de alta a mucha gente
+     de golpe), poner acá códigos NUEVOS y sacarlos cuando termines:
+       "ALGO-QUE-NADIE-ADIVINE": "director" */
+  CODIGOS_INVITACION: {},
 
   /* Webhook de notificaciones (n8n → Evolution API / WhatsApp).
      Si está vacío no se envía nada. Cuando esté armado el workflow de n8n,

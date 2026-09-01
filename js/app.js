@@ -469,13 +469,15 @@ window.PO = window.PO || {};
   /* ------------------------------------------------------------- eventos -- */
 
   function conectarEventos() {
-    // Auth
-    $("ir-registro").addEventListener("click", (e) => {
+    // Auth. El registro abierto está apagado (ver CODIGOS_INVITACION en
+    // config.js), así que estos dos pueden no estar en la pantalla.
+    const alCliquear = (id, fn) => { const e = $(id); if (e) e.addEventListener("click", fn); };
+    alCliquear("ir-registro", (e) => {
       e.preventDefault();
       $("form-login").classList.add("oculto");
       $("form-registro").classList.remove("oculto");
     });
-    $("ir-login").addEventListener("click", (e) => {
+    alCliquear("ir-login", (e) => {
       e.preventDefault();
       $("form-registro").classList.add("oculto");
       $("form-login").classList.remove("oculto");
@@ -2675,37 +2677,57 @@ window.PO = window.PO || {};
 
   /* --- Usuarios --- */
 
+  /** Los que entran con su usuario de Gestión: su rol y su estado los manda
+      el ERP, así que acá son de solo lectura. Cambiarlos desde esta pantalla
+      no serviría de nada — el ERP los volvería a pisar en la próxima entrada. */
+  const esDelErp = (x) => x.origen === "erp";
+
   function renderTabUsuarios() {
     const cont = $("gestion-contenido");
+    const delErp = estado.usuarios.filter(esDelErp).length;
+
     cont.innerHTML =
       '<button type="button" class="btn btn-primario btn-bloque" id="btn-nuevo-usuario">+ Agregar usuario</button>' +
-      '<p class="nota-suave" style="margin:10px 0">Le creás la cuenta y le pasás la contraseña, o que se ' +
-      "registre solo con el código de invitación. Acá le cambiás el rol, le mandás el mail para " +
-      "rehacer la contraseña, lo desactivás o lo borrás. " +
+      '<p class="nota-suave" style="margin:10px 0">Para el equipo no hace falta: quien entra a ' +
+      "Gestión ya entra acá con su mismo usuario, y su rol sale del que tiene allá. " +
+      "Esto es para alguien de afuera del sistema. " +
       "La asignación de obras a cada director se hace en la pestaña Obras.</p>" +
       '<ul class="lista-gestion">' +
       (estado.usuarios.length ? estado.usuarios.map((x) => {
         const soyYo = x.uid === estado.usuario.uid;
+        const delErpEste = esDelErp(x);
         return '<li class="gestion-item' + (x.activo === false ? " apagado" : "") + '">' +
           "<div><div class='g-titulo'>" + esc(x.nombre) + (soyYo ? " (vos)" : "") + "</div>" +
-          "<div class='g-sub'>" + esc(x.email) + " · " + rolEtiqueta(x.rol) +
-          (x.activo === false ? " · desactivado" : "") + "</div></div>" +
+          "<div class='g-sub'>" +
+            (delErpEste ? "Entra con su usuario de Gestión" : esc(x.email)) +
+            " · " + rolEtiqueta(x.rol) +
+            (x.activo === false ? " · desactivado" : "") +
+          "</div></div>" +
           '<div class="g-acciones">' +
-            '<select class="input input-chico usuario-rol" data-uid="' + esc(x.uid) + '"' + (soyYo ? " disabled" : "") + ">" +
-              ["director", "admin", "control"].map((r) =>
-                '<option value="' + r + '"' + (x.rol === r ? " selected" : "") + ">" + r + "</option>").join("") +
-            "</select>" +
-            '<button type="button" class="btn btn-ghost btn-chico usuario-clave" data-uid="' + esc(x.uid) +
-            '">Contraseña</button>' +
-            '<button type="button" class="btn btn-ghost btn-chico usuario-activo" data-uid="' + esc(x.uid) +
-            '" data-activo="' + (x.activo === false ? "0" : "1") + '"' + (soyYo ? " disabled" : "") + ">" +
-            (x.activo === false ? "Activar" : "Desactivar") + "</button>" +
-            (soyYo ? "" :
-              '<button type="button" class="btn btn-ghost btn-chico usuario-borrar" style="color:var(--peligro)" ' +
-              'data-uid="' + esc(x.uid) + '">Borrar</button>') +
+            (delErpEste
+              // Todo lo suyo se administra en Gestión: acá solo se informa.
+              ? '<span class="etiqueta-origen">se administra en Gestión</span>'
+              : '<select class="input input-chico usuario-rol" data-uid="' + esc(x.uid) + '"' + (soyYo ? " disabled" : "") + ">" +
+                  ["director", "admin", "control"].map((r) =>
+                    '<option value="' + r + '"' + (x.rol === r ? " selected" : "") + ">" + r + "</option>").join("") +
+                "</select>" +
+                '<button type="button" class="btn btn-ghost btn-chico usuario-clave" data-uid="' + esc(x.uid) +
+                '">Contraseña</button>' +
+                '<button type="button" class="btn btn-ghost btn-chico usuario-activo" data-uid="' + esc(x.uid) +
+                '" data-activo="' + (x.activo === false ? "0" : "1") + '"' + (soyYo ? " disabled" : "") + ">" +
+                (x.activo === false ? "Activar" : "Desactivar") + "</button>" +
+                (soyYo ? "" :
+                  '<button type="button" class="btn btn-ghost btn-chico usuario-borrar" style="color:var(--peligro)" ' +
+                  'data-uid="' + esc(x.uid) + '">Borrar</button>')) +
           "</div></li>";
       }).join("") : '<li class="lista-vacia">Cargando usuarios…</li>') +
-      "</ul>";
+      "</ul>" +
+      (delErp
+        ? '<p class="nota-suave" style="margin-top:10px">' + delErp +
+          (delErp > 1 ? " usuarios entran" : " usuario entra") +
+          " con su cuenta de Gestión. Para cambiarles el rol o darlos de baja, hacelo en " +
+          "Gestión → Usuarios: lo de acá se sincroniza solo.</p>"
+        : "");
 
     cont.querySelectorAll(".usuario-rol").forEach((sel) =>
       sel.addEventListener("change", async () => {
