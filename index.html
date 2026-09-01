@@ -56,6 +56,14 @@
         <span class="auth-sub">SKY TERRA</span>
       </div>
 
+      <!-- Entrando con la sesión de Gestión: mientras dura, el formulario
+           sobra (nadie tiene contraseña propia). -->
+      <div class="sso-entrando oculto" id="sso-entrando">
+        <div class="sso-spinner" aria-hidden="true"></div>
+        <p>Entrando con tu usuario de Gestión…</p>
+      </div>
+      <button type="button" class="btn btn-primario btn-bloque oculto" id="btn-reintentar-sso">Reintentar</button>
+
       <!-- Login -->
       <form id="form-login" novalidate>
         <label class="campo">

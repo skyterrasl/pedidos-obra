@@ -1338,3 +1338,25 @@ select.input option { background: var(--bg-2); color: var(--text); }
   line-height: 1;
   cursor: pointer;
 }
+
+/* Entrando con la sesión de Gestión: es un estado de espera, no un error. */
+.sso-entrando {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 0 6px;
+  color: var(--texto-suave);
+  font-size: 14.5px;
+  text-align: center;
+}
+.sso-spinner {
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--borde);
+  border-top-color: var(--petroleo);
+  border-radius: 50%;
+  animation: girar 0.8s linear infinite;
+}
+@keyframes girar { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .sso-spinner { animation: none; } }

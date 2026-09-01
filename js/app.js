@@ -374,6 +374,15 @@ window.PO = window.PO || {};
     PO.fb.auth.onAuthStateChanged(onAuth);
   });
 
+  /** Mientras se entra con la sesión de Gestión: se avisa y se esconde el
+      formulario, que en ese momento no le sirve a nadie. */
+  function entrando(si) {
+    $("sso-entrando").classList.toggle("oculto", !si);
+    $("form-login").classList.toggle("oculto", si);
+    $("btn-reintentar-sso").classList.add("oculto");
+    if (si) mostrarError("login-error", "");
+  }
+
   async function onAuth(user) {
     if (!user) {
       limpiarSesion();
@@ -381,12 +390,14 @@ window.PO = window.PO || {};
       // Dentro del ERP no se pide la contraseña otra vez: se entra con su
       // sesión. Si ese usuario no tiene permiso acá, se le explica.
       if (PO.sso && PO.sso.disponible()) {
-        mostrarError("login-error", "Entrando con tu usuario de Gestión…");
+        entrando(true);
         const r = await PO.sso.entrar();
-        if (r.ok) return;   // onAuth se vuelve a disparar, ya con sesión
+        if (r.ok) { entrando(false); return; }   // onAuth se dispara de nuevo, ya con sesión
+        entrando(false);
         mostrarError("login-error", r.sinAcceso
           ? r.error + " Pedile a administración que te habilite."
-          : "No pudimos entrar con tu usuario de Gestión. Probá con tu email y contraseña.");
+          : "No pudimos entrar con tu usuario de Gestión.");
+        $("btn-reintentar-sso").classList.toggle("oculto", !!r.sinAcceso);
       }
       return;
     }
@@ -419,6 +430,8 @@ window.PO = window.PO || {};
   }
 
   function iniciarSesion(perfil) {
+    // Dentro de Gestión el botón no cierra sesión: vuelve al ERP. Que lo diga.
+    $("btn-salir").textContent = (PO.sso && PO.sso.disponible()) ? "‹ Gestión" : "Salir";
     estado.usuario = perfil;
     estado.filtros = { estado: "todos", obra: "todas", rubro: "todos", desde: "", hasta: "", q: "" };
     estado.dash = { obra: "todas", rubro: "todos" };
@@ -503,9 +516,10 @@ window.PO = window.PO || {};
     $("form-registro").addEventListener("submit", onRegistro);
     $("btn-olvide-pass").addEventListener("click", onOlvidePass);
     $("btn-salir").addEventListener("click", async () => {
-      const volverAlErp = PO.sso && PO.sso.disponible();
+      // Dentro de Gestión no se cierra sesión: se vuelve. Cerrarla no serviría
+      // —la sesión es la del ERP— y dejaría al usuario en un login inútil.
+      if (PO.sso && PO.sso.disponible()) { PO.sso.volverAlErp(); return; }
       await PO.fb.auth.signOut();
-      if (volverAlErp) PO.sso.volverAlErp();
     });
 
     // Navegación
@@ -584,6 +598,7 @@ window.PO = window.PO || {};
     // Perfil
     $("form-perfil").addEventListener("submit", onGuardarPerfil);
     $("btn-push").addEventListener("click", alternarPush);
+    $("btn-reintentar-sso").addEventListener("click", () => onAuth(null));
 
     // Materiales de un rubro
     $("btn-volver-materiales").addEventListener("click", () => ir("gestion"));

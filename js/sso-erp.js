@@ -38,25 +38,36 @@ PO.sso = {
         { ok: false, error }         no se pudo (sin red, sesión vencida, etc.) */
   async entrar() {
     if (!this.disponible()) return { ok: false, error: "sin sesión del ERP" };
-    try {
-      const r = await fetch("/api/pedidos/pase", {
-        headers: { "x-token": this.tokenErp() }
-      });
-      const d = await r.json().catch(() => ({}));
 
-      if (r.status === 403) return { ok: false, sinAcceso: true, error: d.error };
-      if (!r.ok || !d.token) return { ok: false, error: d.error || ("Error " + r.status) };
+    // Al abrir la app por primera vez, el service worker se está instalando y
+    // toma el control a mitad de camino: eso corta el pedido en vuelo con un
+    // "Failed to fetch" que no tiene nada que ver con la conexión. Por eso se
+    // reintenta un par de veces antes de darse por vencido.
+    let ultimo = null;
+    for (let intento = 0; intento < 3; intento++) {
+      try {
+        const r = await fetch("/api/pedidos/pase", {
+          headers: { "x-token": this.tokenErp() },
+          cache: "no-store"
+        });
+        const d = await r.json().catch(() => ({}));
 
-      await PO.fb.auth.signInWithCustomToken(d.token);
-      return { ok: true, rol: d.rol };
-    } catch (e) {
-      console.warn("[PO] No se pudo entrar con la sesión del ERP:", e);
-      return { ok: false, error: e.message };
+        if (r.status === 403) return { ok: false, sinAcceso: true, error: d.error };
+        if (!r.ok || !d.token) return { ok: false, error: d.error || ("Error " + r.status) };
+
+        await PO.fb.auth.signInWithCustomToken(d.token);
+        return { ok: true, rol: d.rol };
+      } catch (e) {
+        ultimo = e;
+        console.warn("[PO] Intento " + (intento + 1) + " de entrar con Gestión:", e.message);
+        await new Promise((r) => setTimeout(r, 400 * (intento + 1)));
+      }
     }
+    return { ok: false, error: (ultimo && ultimo.message) || "no se pudo conectar" };
   },
 
-  /** Al salir de Pedidos estando dentro del ERP, se vuelve al ERP en vez de
-      quedarse en una pantalla de login que no corresponde. */
+  /** Dentro del ERP, la sesión la manda Gestión: de acá no se "sale", se
+      vuelve. El botón lo dice y lleva justo ahí. */
   volverAlErp() {
     location.href = "/";
   }
