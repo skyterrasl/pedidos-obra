@@ -1303,3 +1303,38 @@ select.input option { background: var(--bg-2); color: var(--text); }
   padding: 4px 10px;
   white-space: nowrap;
 }
+
+/* Lista de materiales de un rubro (Gestión → Rubros → Materiales) */
+.lista-materiales {
+  list-style: none;
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  margin: 12px 0;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+.material-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--borde);
+  font-size: 14.5px;
+  overflow-wrap: anywhere;
+}
+.material-fila:last-child { border-bottom: none; }
+.btn-quitar-material {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--peligro);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}

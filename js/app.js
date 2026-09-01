@@ -199,6 +199,7 @@ window.PO = window.PO || {};
     pedidos: [],
     notificaciones: [],
     recepcionesPedido: [],
+    materialesRubro: null,   // rubro que se está editando en Gestión
     fotosPedido: [],
     vista: "dashboard",
     tabGestion: "obras",
@@ -316,7 +317,7 @@ window.PO = window.PO || {};
       estado.edicionBorradorId = null;
     }
     estado.vista = vista;
-    ["dashboard", "listado", "nuevo", "detalle", "gestion", "perfil"].forEach((v) =>
+    ["dashboard", "listado", "nuevo", "detalle", "gestion", "materiales", "perfil"].forEach((v) =>
       $("vista-" + v).classList.toggle("oculto", v !== vista)
     );
 
@@ -332,6 +333,7 @@ window.PO = window.PO || {};
     if (vista === "nuevo") prepararFormNuevo();
     if (vista === "detalle") renderDetalle();
     if (vista === "gestion") renderGestion();
+    if (vista === "materiales") renderMateriales();
     if (vista === "perfil") renderPerfil();
     window.scrollTo(0, 0);
   }
@@ -460,6 +462,7 @@ window.PO = window.PO || {};
     if (estado.vista === "listado") renderListado();
     if (estado.vista === "detalle") renderDetalle();
     if (estado.vista === "gestion") renderGestion();
+    if (estado.vista === "materiales") renderMateriales();
   }
 
   function limpiarSubs() {
@@ -581,6 +584,18 @@ window.PO = window.PO || {};
     // Perfil
     $("form-perfil").addEventListener("submit", onGuardarPerfil);
     $("btn-push").addEventListener("click", alternarPush);
+
+    // Materiales de un rubro
+    $("btn-volver-materiales").addEventListener("click", () => ir("gestion"));
+    $("btn-agregar-material").addEventListener("click", agregarMaterial);
+    $("material-nuevo").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); agregarMaterial(); }
+    });
+    $("materiales-buscar").addEventListener("input", (e) => {
+      estado.materialesRubro.filtro = e.target.value;
+      renderMateriales();
+    });
+    $("btn-guardar-materiales").addEventListener("click", guardarMateriales);
 
     // Al tocar una notificación con la app abierta, el service worker avisa
     // a qué pedido ir.
@@ -1381,6 +1396,27 @@ window.PO = window.PO || {};
 
   /** Materiales sugeridos para el rubro/obra elegidos: primero los que ya se
       pidieron antes (lo más probable), después el catálogo del rubro. */
+  /** La lista de materiales de un rubro: la que cargó administración desde
+      Gestión, o —si todavía no cargó ninguna— la del catálogo base del archivo.
+      El nombre del rubro se compara sin mayúsculas ni tildes, así funciona
+      aunque esté cargado como "Materiales gruesos". */
+  function catalogoDe(nombreRubro) {
+    if (!nombreRubro) return [];
+    const rubro = estado.rubros.find((r) => clave(r.nombre) === clave(nombreRubro));
+    if (rubro && Array.isArray(rubro.materiales)) return rubro.materiales;
+    const cat = window.MATERIALES_CATALOGO || {};
+    const k = Object.keys(cat).find((r) => clave(r) === clave(nombreRubro));
+    return k ? cat[k] : [];
+  }
+
+  /** Lo que trae el catálogo base del archivo para ese rubro (para ofrecer
+      cargarlo la primera vez). */
+  function catalogoBaseDe(nombreRubro) {
+    const cat = window.MATERIALES_CATALOGO || {};
+    const k = Object.keys(cat).find((r) => clave(r) === clave(nombreRubro));
+    return k ? cat[k] : [];
+  }
+
   function materialesSugeridos() {
     const obraSel = $("pedido-obra").value;
     const rubroSel = $("pedido-rubro").value;
@@ -1396,11 +1432,7 @@ window.PO = window.PO || {};
       if (d) set.set(clave(d), d);
     }));
 
-    // Catálogo: se busca sin distinguir mayúsculas/acentos, así funciona
-    // aunque el rubro esté cargado como "Materiales gruesos".
-    const cat = window.MATERIALES_CATALOGO || {};
-    const k = Object.keys(cat).find((r) => clave(r) === clave(rubroSel));
-    (k ? cat[k] : []).forEach((m) => { if (!set.has(clave(m))) set.set(clave(m), m); });
+    catalogoDe(rubroSel).forEach((m) => { if (!set.has(clave(m))) set.set(clave(m), m); });
 
     if (!set.size && rubroSel) {
       const ejK = Object.keys(MATERIALES_EJEMPLO).find((r) => clave(r) === clave(rubroSel));
@@ -2502,6 +2534,99 @@ window.PO = window.PO || {};
 
   /* --- Rubros --- */
 
+  /** Cuántos materiales tiene un rubro y de dónde salen. */
+  function textoCantidadMateriales(r) {
+    if (Array.isArray(r.materiales)) {
+      return r.materiales.length
+        ? r.materiales.length + " materiales"
+        : "sin materiales cargados";
+    }
+    const base = catalogoBaseDe(r.nombre).length;
+    return base
+      ? base + " materiales (del catálogo base)"
+      : "sin materiales cargados";
+  }
+
+  /* --- Materiales de un rubro -----------------------------------------------
+         Viven dentro del rubro. Hasta que alguien los edita, se usan los del
+         archivo; al guardar por primera vez, el rubro pasa a tener los suyos. */
+
+  function abrirMaterialesRubro(rubroId) {
+    const r = estado.rubros.find((x) => x.id === rubroId);
+    if (!r) return;
+    estado.materialesRubro = {
+      id: rubroId,
+      nombre: r.nombre,
+      lista: Array.isArray(r.materiales) ? r.materiales.slice() : catalogoBaseDe(r.nombre).slice(),
+      propios: Array.isArray(r.materiales),
+      filtro: ""
+    };
+    ir("materiales");
+  }
+
+  function renderMateriales() {
+    const m = estado.materialesRubro;
+    if (!m) { ir("gestion"); return; }
+    $("materiales-titulo").textContent = m.nombre;
+
+    const q = clave(m.filtro);
+    const visibles = q ? m.lista.filter((x) => clave(x).includes(q)) : m.lista;
+
+    $("materiales-resumen").textContent =
+      m.lista.length + (m.lista.length === 1 ? " material" : " materiales") +
+      (m.propios ? "" : " · del catálogo base, todavía sin editar") +
+      (q ? " · " + visibles.length + " coinciden" : "");
+
+    $("materiales-lista").innerHTML = visibles.length
+      ? visibles.map((x) =>
+          '<li class="material-fila"><span>' + esc(x) + "</span>" +
+          '<button type="button" class="btn-quitar-material" data-mat="' + esc(x) +
+          '" aria-label="Quitar">✕</button></li>').join("")
+      : '<li class="lista-vacia">' +
+        (m.lista.length ? "Ningún material coincide con la búsqueda."
+                        : "Todavía no hay materiales en este rubro.") + "</li>";
+
+    $("materiales-lista").querySelectorAll(".btn-quitar-material").forEach((b) =>
+      b.addEventListener("click", () => {
+        const cual = b.dataset.mat;
+        m.lista = m.lista.filter((x) => x !== cual);
+        renderMateriales();
+      })
+    );
+  }
+
+  async function agregarMaterial() {
+    const m = estado.materialesRubro;
+    const campo = $("material-nuevo");
+    const nombre = campo.value.trim();
+    if (!nombre) return;
+    if (m.lista.some((x) => clave(x) === clave(nombre))) {
+      toast("Ese material ya está en la lista.");
+      campo.select();
+      return;
+    }
+    m.lista.push(nombre);
+    m.lista.sort((a, b) => a.localeCompare(b, "es"));
+    campo.value = "";
+    campo.focus();
+    renderMateriales();
+  }
+
+  async function guardarMateriales() {
+    const m = estado.materialesRubro;
+    const b = $("btn-guardar-materiales");
+    b.disabled = true;
+    try {
+      await PO.store.guardarMaterialesRubro(m.id, m.lista);
+      m.propios = true;
+      toast("Materiales de " + m.nombre + " guardados.");
+      ir("gestion");
+    } catch (e) {
+      toast("No se pudo guardar: " + (e.message || e));
+      b.disabled = false;
+    }
+  }
+
   function renderTabRubros() {
     const cont = $("gestion-contenido");
     // clave() ignora mayúsculas Y tildes: así "Herrería" y "HERRERIA" no se duplican.
@@ -2522,8 +2647,10 @@ window.PO = window.PO || {};
       '<ul class="lista-gestion">' +
       estado.rubros.map((r) =>
         '<li class="gestion-item" data-id="' + esc(r.id) + '">' +
-        "<div class='g-titulo rubro-nombre'>" + esc(r.nombre) + "</div>" +
+        "<div><div class='g-titulo rubro-nombre'>" + esc(r.nombre) + "</div>" +
+          "<div class='g-sub'>" + textoCantidadMateriales(r) + "</div></div>" +
         '<div class="g-acciones">' +
+          '<button type="button" class="btn btn-ghost btn-chico" data-materiales="' + esc(r.id) + '">Materiales</button>' +
           '<button type="button" class="btn btn-ghost btn-chico" data-editar="' + esc(r.id) + '">Editar</button>' +
           '<button type="button" class="btn btn-ghost btn-chico" style="color:var(--peligro)" data-borrar="' + esc(r.id) + '">Borrar</button>' +
         "</div></li>"
@@ -2549,6 +2676,9 @@ window.PO = window.PO || {};
         toast(faltantes.length + " rubro(s) cargado(s).");
       } catch (e) { toast("No se pudieron cargar: " + (e.message || e)); bDef.disabled = false; }
     });
+    cont.querySelectorAll("[data-materiales]").forEach((b) =>
+      b.addEventListener("click", () => abrirMaterialesRubro(b.dataset.materiales))
+    );
     cont.querySelectorAll("[data-editar]").forEach((b) =>
       b.addEventListener("click", () => {
         const li = b.closest(".gestion-item");

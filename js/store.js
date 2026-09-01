@@ -122,6 +122,13 @@ PO.store = {
     else await col.add({ nombre });
   },
 
+  /** Guarda la lista de materiales de un rubro. Va dentro del propio rubro
+      (no en una colección aparte) por dos razones: es un dato del rubro, y
+      así se lee de una con los rubros en vez de sumar consultas. */
+  async guardarMaterialesRubro(id, materiales) {
+    await PO.fb.db.collection("rubros").doc(id).update({ materiales });
+  },
+
   async borrarRubro(id) {
     await PO.fb.db.collection("rubros").doc(id).delete();
   },

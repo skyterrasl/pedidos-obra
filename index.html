@@ -282,6 +282,26 @@
         <div id="gestion-contenido"><!-- por JS --></div>
       </section>
 
+      <!-- ------------------ VISTA: MATERIALES DE UN RUBRO ----------------- -->
+      <section class="vista oculto" id="vista-materiales">
+        <div class="vista-encabezado">
+          <button type="button" class="btn-volver" id="btn-volver-materiales">‹ Volver</button>
+          <h2 id="materiales-titulo">Materiales</h2>
+        </div>
+        <p class="nota-suave" id="materiales-resumen"></p>
+
+        <div class="fila-alta" style="margin:12px 0">
+          <input class="input" id="material-nuevo" placeholder="Agregar material…" autocomplete="off" />
+          <button type="button" class="btn btn-primario" id="btn-agregar-material">Agregar</button>
+        </div>
+        <input class="input buscador" type="search" id="materiales-buscar"
+          placeholder="Buscar en la lista…" />
+
+        <ul class="lista-materiales" id="materiales-lista"><!-- por JS --></ul>
+
+        <button type="button" class="btn btn-primario btn-bloque" id="btn-guardar-materiales">Guardar la lista</button>
+      </section>
+
       <!-- ------------------------- VISTA: PERFIL -------------------------- -->
       <section class="vista oculto" id="vista-perfil">
         <h2 class="gestion-titulo">Mi perfil</h2>
