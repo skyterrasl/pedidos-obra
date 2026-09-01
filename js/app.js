@@ -357,7 +357,8 @@ window.PO = window.PO || {};
     const p = $("auth-como-entrar");
     if (!p) return;
     if (PO.sso && PO.sso.dentroDelErp()) {
-      p.textContent = "Entrás con tu usuario de Gestión.";
+      // Si ya hay sesión de Gestión, el aviso sobra: entra solo.
+      p.textContent = PO.sso.hayGestion() ? "" : "El equipo entra con su usuario de Gestión.";
       return;
     }
     p.innerHTML = 'Se entra desde <a href="https://gestion.skyterra.com.ar/pedidos/">' +
@@ -381,6 +382,7 @@ window.PO = window.PO || {};
     $("form-login").classList.toggle("oculto", si);
     $("btn-reintentar-sso").classList.add("oculto");
     $("btn-entrar-sso").classList.add("oculto");
+    $("falta-gestion").classList.add("oculto");
     if (si) mostrarError("login-error", "");
   }
 
@@ -393,6 +395,14 @@ window.PO = window.PO || {};
       // ofrece el botón.
       if (PO.sso && PO.sso.hayGestion() && PO.sso.salioAProposito()) {
         $("btn-entrar-sso").classList.remove("oculto");
+        $("form-login").classList.add("oculto");
+        return;
+      }
+
+      // En el módulo pero sin sesión de Gestión: el formulario de email no le
+      // sirve (nadie del equipo tiene contraseña propia). Se le dice qué hacer.
+      if (PO.sso && PO.sso.dentroDelErp() && !PO.sso.hayGestion()) {
+        $("falta-gestion").classList.remove("oculto");
         $("form-login").classList.add("oculto");
         return;
       }
@@ -608,6 +618,13 @@ window.PO = window.PO || {};
     $("btn-entrar-sso").addEventListener("click", () => {
       PO.sso.limpiarSalida();
       onAuth(null);
+    });
+    // Ir a Gestión a iniciar sesión: es el único camino, y lo toca la persona.
+    $("btn-ir-gestion").addEventListener("click", () => { location.href = "/"; });
+    // Salida para los usuarios con cuenta propia (los que da de alta administración).
+    $("ver-login-email").addEventListener("click", () => {
+      $("falta-gestion").classList.add("oculto");
+      $("form-login").classList.remove("oculto");
     });
 
     // Materiales de un rubro

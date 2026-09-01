@@ -65,6 +65,17 @@
       <button type="button" class="btn btn-primario btn-bloque oculto" id="btn-reintentar-sso">Reintentar</button>
       <button type="button" class="btn btn-primario btn-bloque oculto" id="btn-entrar-sso">Entrar</button>
 
+      <!-- Está en el módulo pero todavía no inició sesión en Gestión. -->
+      <div class="oculto" id="falta-gestion">
+        <p class="nota-suave" style="text-align:center;margin-bottom:14px">
+          Para entrar a Pedidos, primero iniciá sesión en Gestión con tu usuario de siempre.
+        </p>
+        <button type="button" class="btn btn-primario btn-bloque" id="btn-ir-gestion">Iniciar sesión en Gestión</button>
+        <p class="auth-alternativa">
+          <button type="button" class="btn-link" id="ver-login-email">Entrar con email y contraseña</button>
+        </p>
+      </div>
+
       <!-- Login -->
       <form id="form-login" novalidate>
         <label class="campo">
