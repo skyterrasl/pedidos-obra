@@ -27,9 +27,14 @@ PO.sso = {
     return location.pathname.indexOf("/pedidos/") === 0 || location.hostname.startsWith("pedidos.");
   },
 
-  /** ¿Se puede intentar la entrada automática? */
-  disponible() {
+  /** ¿Hay una sesión de Gestión que se pueda usar acá? */
+  hayGestion() {
     return this.dentroDelErp() && !!this.tokenErp();
+  },
+
+  /** ¿Se entra solo? Solo si hay sesión de Gestión y no se salió a propósito. */
+  disponible() {
+    return this.hayGestion() && !this.salioAProposito();
   },
 
   /** Pide el pase y entra. Devuelve:
@@ -66,9 +71,22 @@ PO.sso = {
     return { ok: false, error: (ultimo && ultimo.message) || "no se pudo conectar" };
   },
 
-  /** Dentro del ERP, la sesión la manda Gestión: de acá no se "sale", se
-      vuelve. El botón lo dice y lleva justo ahí. */
-  volverAlErp() {
-    location.href = "/";
+  /* --- Salir a propósito -----------------------------------------------
+       Sin esto, cerrar sesión no se notaría: la app volvería a entrar sola con
+       la sesión de Gestión y parecería que el botón no hizo nada. La marca es
+       de este dispositivo y se borra al volver a entrar. */
+
+  MARCA: "po-salio",
+
+  marcarSalida() {
+    try { localStorage.setItem(this.MARCA, "1"); } catch (e) {}
+  },
+
+  limpiarSalida() {
+    try { localStorage.removeItem(this.MARCA); } catch (e) {}
+  },
+
+  salioAProposito() {
+    try { return localStorage.getItem(this.MARCA) === "1"; } catch (e) { return false; }
   }
 };

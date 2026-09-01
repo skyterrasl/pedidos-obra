@@ -380,6 +380,7 @@ window.PO = window.PO || {};
     $("sso-entrando").classList.toggle("oculto", !si);
     $("form-login").classList.toggle("oculto", si);
     $("btn-reintentar-sso").classList.add("oculto");
+    $("btn-entrar-sso").classList.add("oculto");
     if (si) mostrarError("login-error", "");
   }
 
@@ -387,8 +388,14 @@ window.PO = window.PO || {};
     if (!user) {
       limpiarSesion();
       mostrarPantalla("auth");
-      // Dentro del ERP no se pide la contraseña otra vez: se entra con su
-      // sesión. Si ese usuario no tiene permiso acá, se le explica.
+      // Se entra con la sesión de Gestión, sin pedir contraseña de nuevo.
+      // Si la persona salió a propósito, no se la mete de vuelta sola: se le
+      // ofrece el botón.
+      if (PO.sso && PO.sso.hayGestion() && PO.sso.salioAProposito()) {
+        $("btn-entrar-sso").classList.remove("oculto");
+        $("form-login").classList.add("oculto");
+        return;
+      }
       if (PO.sso && PO.sso.disponible()) {
         entrando(true);
         const r = await PO.sso.entrar();
@@ -430,8 +437,7 @@ window.PO = window.PO || {};
   }
 
   function iniciarSesion(perfil) {
-    // Dentro de Gestión el botón no cierra sesión: vuelve al ERP. Que lo diga.
-    $("btn-salir").textContent = (PO.sso && PO.sso.disponible()) ? "‹ Gestión" : "Salir";
+    if (PO.sso) PO.sso.limpiarSalida();   // entró: la salida anterior ya no cuenta
     estado.usuario = perfil;
     estado.filtros = { estado: "todos", obra: "todas", rubro: "todos", desde: "", hasta: "", q: "" };
     estado.dash = { obra: "todas", rubro: "todos" };
@@ -516,9 +522,9 @@ window.PO = window.PO || {};
     $("form-registro").addEventListener("submit", onRegistro);
     $("btn-olvide-pass").addEventListener("click", onOlvidePass);
     $("btn-salir").addEventListener("click", async () => {
-      // Dentro de Gestión no se cierra sesión: se vuelve. Cerrarla no serviría
-      // —la sesión es la del ERP— y dejaría al usuario en un login inútil.
-      if (PO.sso && PO.sso.disponible()) { PO.sso.volverAlErp(); return; }
+      // Se sale de Pedidos y se queda en Pedidos. La sesión de Gestión sigue
+      // viva, pero no se usa hasta que la persona toque "Entrar".
+      if (PO.sso) PO.sso.marcarSalida();
       await PO.fb.auth.signOut();
     });
 
@@ -599,6 +605,10 @@ window.PO = window.PO || {};
     $("form-perfil").addEventListener("submit", onGuardarPerfil);
     $("btn-push").addEventListener("click", alternarPush);
     $("btn-reintentar-sso").addEventListener("click", () => onAuth(null));
+    $("btn-entrar-sso").addEventListener("click", () => {
+      PO.sso.limpiarSalida();
+      onAuth(null);
+    });
 
     // Materiales de un rubro
     $("btn-volver-materiales").addEventListener("click", () => ir("gestion"));
