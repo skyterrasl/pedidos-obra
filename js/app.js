@@ -211,7 +211,6 @@ window.PO = window.PO || {};
     fotosRecepcion: [],      // [{base64, tipo}] del modal de recepción
     obraEditandoId: null,
     proveedorEditandoId: null,
-    registroPendiente: null,
     subs: {}
   };
 
@@ -357,12 +356,11 @@ window.PO = window.PO || {};
     const p = $("auth-como-entrar");
     if (!p) return;
     if (PO.sso && PO.sso.dentroDelErp()) {
-      // Si ya hay sesión de Gestión, el aviso sobra: entra solo.
-      p.textContent = PO.sso.hayGestion() ? "" : "El equipo entra con su usuario de Gestión.";
+      p.textContent = "Es el mismo usuario y la misma clave que en Gestión.";
       return;
     }
     p.innerHTML = 'Se entra desde <a href="https://gestion.skyterra.com.ar/pedidos/">' +
-      'gestion.skyterra.com.ar</a>, con tu usuario de Gestión.';
+      'gestion.skyterra.com.ar</a>.';
   }
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -380,9 +378,6 @@ window.PO = window.PO || {};
   function entrando(si) {
     $("sso-entrando").classList.toggle("oculto", !si);
     $("form-login").classList.toggle("oculto", si);
-    $("btn-reintentar-sso").classList.add("oculto");
-    $("btn-entrar-sso").classList.add("oculto");
-    $("falta-gestion").classList.add("oculto");
     if (si) mostrarError("login-error", "");
   }
 
@@ -390,44 +385,18 @@ window.PO = window.PO || {};
     if (!user) {
       limpiarSesion();
       mostrarPantalla("auth");
-      // Se entra con la sesión de Gestión, sin pedir contraseña de nuevo.
-      // Si la persona salió a propósito, no se la mete de vuelta sola: se le
-      // ofrece el botón.
-      if (PO.sso && PO.sso.hayGestion() && PO.sso.salioAProposito()) {
-        $("btn-entrar-sso").classList.remove("oculto");
-        $("form-login").classList.add("oculto");
-        return;
-      }
-
-      // En el módulo pero sin sesión de Gestión: el formulario de email no le
-      // sirve (nadie del equipo tiene contraseña propia). Se le dice qué hacer.
-      if (PO.sso && PO.sso.dentroDelErp() && !PO.sso.hayGestion()) {
-        $("falta-gestion").classList.remove("oculto");
-        $("form-login").classList.add("oculto");
-        return;
-      }
+      // Si ya hay sesión de Gestión (viene del menú del ERP), entra sola y ni
+      // se ve el formulario. Si no, se pide usuario y contraseña como siempre.
       if (PO.sso && PO.sso.disponible()) {
         entrando(true);
         const r = await PO.sso.entrar();
-        if (r.ok) { entrando(false); return; }   // onAuth se dispara de nuevo, ya con sesión
         entrando(false);
-        mostrarError("login-error", r.sinAcceso
-          ? r.error + " Pedile a administración que te habilite."
-          : "No pudimos entrar con tu usuario de Gestión.");
-        $("btn-reintentar-sso").classList.toggle("oculto", !!r.sinAcceso);
+        if (r.ok) return;   // onAuth se dispara de nuevo, ya con sesión
       }
       return;
     }
     try {
       let perfil = await PO.store.obtenerUsuario(user.uid);
-      if (!perfil && estado.registroPendiente) {
-        await PO.store.crearUsuario(user.uid, {
-          nombre: estado.registroPendiente.nombre,
-          email: user.email,
-          rol: estado.registroPendiente.rol
-        });
-        perfil = await PO.store.obtenerUsuario(user.uid);
-      }
       if (!perfil) {
         toast("No encontramos tu perfil. Cerrá sesión y creá la cuenta de nuevo.");
         await PO.fb.auth.signOut();
@@ -438,7 +407,6 @@ window.PO = window.PO || {};
         await PO.fb.auth.signOut();
         return;
       }
-      estado.registroPendiente = null;
       iniciarSesion(perfil);
     } catch (e) {
       console.error("[PO] Error cargando el perfil:", e);
@@ -515,22 +483,8 @@ window.PO = window.PO || {};
   /* ------------------------------------------------------------- eventos -- */
 
   function conectarEventos() {
-    // Auth. El registro abierto está apagado (ver CODIGOS_INVITACION en
-    // config.js), así que estos dos pueden no estar en la pantalla.
-    const alCliquear = (id, fn) => { const e = $(id); if (e) e.addEventListener("click", fn); };
-    alCliquear("ir-registro", (e) => {
-      e.preventDefault();
-      $("form-login").classList.add("oculto");
-      $("form-registro").classList.remove("oculto");
-    });
-    alCliquear("ir-login", (e) => {
-      e.preventDefault();
-      $("form-registro").classList.add("oculto");
-      $("form-login").classList.remove("oculto");
-    });
+    // Auth: una sola puerta, con el usuario y la clave del ERP.
     $("form-login").addEventListener("submit", onLogin);
-    $("form-registro").addEventListener("submit", onRegistro);
-    $("btn-olvide-pass").addEventListener("click", onOlvidePass);
     $("btn-salir").addEventListener("click", async () => {
       // Se sale de Pedidos y se queda en Pedidos. La sesión de Gestión sigue
       // viva, pero no se usa hasta que la persona toque "Entrar".
@@ -614,18 +568,7 @@ window.PO = window.PO || {};
     // Perfil
     $("form-perfil").addEventListener("submit", onGuardarPerfil);
     $("btn-push").addEventListener("click", alternarPush);
-    $("btn-reintentar-sso").addEventListener("click", () => onAuth(null));
-    $("btn-entrar-sso").addEventListener("click", () => {
-      PO.sso.limpiarSalida();
-      onAuth(null);
-    });
-    // Ir a Gestión a iniciar sesión: es el único camino, y lo toca la persona.
-    $("btn-ir-gestion").addEventListener("click", () => { location.href = "/"; });
-    // Salida para los usuarios con cuenta propia (los que da de alta administración).
-    $("ver-login-email").addEventListener("click", () => {
-      $("falta-gestion").classList.add("oculto");
-      $("form-login").classList.remove("oculto");
-    });
+
 
     // Materiales de un rubro
     $("btn-volver-materiales").addEventListener("click", () => ir("gestion"));
@@ -706,63 +649,24 @@ window.PO = window.PO || {};
 
   /* ---------------------------------------------------------------- auth -- */
 
+  /** Entra con el usuario y la clave del ERP: los mismos de siempre. La app
+      los valida contra Gestión y con eso obtiene su pase. */
   async function onLogin(e) {
     e.preventDefault();
     mostrarError("login-error", "");
-    const email = $("login-email").value.trim();
-    const pass = $("login-pass").value;
-    if (!email || !pass) { mostrarError("login-error", "Completá email y contraseña."); return; }
+    const usuario = $("login-usuario").value.trim();
+    const clave = $("login-pass").value;
+    if (!usuario || !clave) { mostrarError("login-error", "Completá usuario y contraseña."); return; }
+
     $("btn-login").disabled = true;
+    $("btn-login").textContent = "Entrando…";
     try {
-      await PO.fb.auth.signInWithEmailAndPassword(email, pass);
+      await PO.sso.entrarConClave(usuario, clave);
+      // Entró: onAuth se dispara solo y arma la sesión.
     } catch (err) {
-      mostrarError("login-error", errorAuthES(err));
-    } finally {
+      mostrarError("login-error", err.message);
       $("btn-login").disabled = false;
-    }
-  }
-
-  async function onOlvidePass(e) {
-    e.preventDefault();
-    mostrarError("login-error", "");
-    const email = $("login-email").value.trim();
-    if (!email) {
-      mostrarError("login-error", "Escribí tu email en el campo de arriba y volvé a tocar el link.");
-      return;
-    }
-    try {
-      await PO.fb.auth.sendPasswordResetEmail(email);
-      toast("Te mandamos un mail a " + email + " para restablecer tu contraseña.");
-    } catch (err) {
-      mostrarError("login-error", errorAuthES(err));
-    }
-  }
-
-  async function onRegistro(e) {
-    e.preventDefault();
-    mostrarError("registro-error", "");
-    const nombre = $("reg-nombre").value.trim();
-    const email = $("reg-email").value.trim();
-    const pass = $("reg-pass").value;
-    const codigo = $("reg-codigo").value.trim().toUpperCase();
-
-    if (!nombre) { mostrarError("registro-error", "Poné tu nombre y apellido."); return; }
-    if (!email) { mostrarError("registro-error", "Poné tu email."); return; }
-    if (pass.length < 6) { mostrarError("registro-error", "La contraseña necesita al menos 6 caracteres."); return; }
-
-    const rol = (window.APP_CONFIG.CODIGOS_INVITACION || {})[codigo];
-    if (!rol) { mostrarError("registro-error", "El código de invitación no es válido. Pedíselo a administración."); return; }
-
-    $("btn-registro").disabled = true;
-    estado.registroPendiente = { nombre, rol };
-    try {
-      await PO.fb.auth.createUserWithEmailAndPassword(email, pass);
-      // onAuth crea el doc de usuario y entra.
-    } catch (err) {
-      estado.registroPendiente = null;
-      mostrarError("registro-error", errorAuthES(err));
-    } finally {
-      $("btn-registro").disabled = false;
+      $("btn-login").textContent = "Ingresar";
     }
   }
 

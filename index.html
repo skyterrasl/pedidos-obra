@@ -47,7 +47,7 @@
     </div>
   </section>
 
-  <!-- ======================= PANTALLA: LOGIN / REGISTRO ==================== -->
+  <!-- ============================ PANTALLA: LOGIN ========================== -->
   <section class="pantalla oculto" id="pantalla-auth">
     <div class="tarjeta-centrada tarjeta-auth">
       <div class="auth-marca">
@@ -56,31 +56,18 @@
         <span class="auth-sub">SKY TERRA</span>
       </div>
 
-      <!-- Entrando con la sesión de Gestión: mientras dura, el formulario
-           sobra (nadie tiene contraseña propia). -->
+      <!-- Cuando se entra con la sesión de Gestión ya abierta, el formulario
+           no llega ni a verse: esto es lo que se muestra mientras tanto. -->
       <div class="sso-entrando oculto" id="sso-entrando">
         <div class="sso-spinner" aria-hidden="true"></div>
-        <p>Entrando con tu usuario de Gestión…</p>
-      </div>
-      <button type="button" class="btn btn-primario btn-bloque oculto" id="btn-reintentar-sso">Reintentar</button>
-      <button type="button" class="btn btn-primario btn-bloque oculto" id="btn-entrar-sso">Entrar</button>
-
-      <!-- Está en el módulo pero todavía no inició sesión en Gestión. -->
-      <div class="oculto" id="falta-gestion">
-        <p class="nota-suave" style="text-align:center;margin-bottom:14px">
-          Para entrar a Pedidos, primero iniciá sesión en Gestión con tu usuario de siempre.
-        </p>
-        <button type="button" class="btn btn-primario btn-bloque" id="btn-ir-gestion">Iniciar sesión en Gestión</button>
-        <p class="auth-alternativa">
-          <button type="button" class="btn-link" id="ver-login-email">Entrar con email y contraseña</button>
-        </p>
+        <p>Entrando…</p>
       </div>
 
-      <!-- Login -->
       <form id="form-login" novalidate>
         <label class="campo">
-          <span>Email</span>
-          <input class="input" type="email" id="login-email" autocomplete="email" required />
+          <span>Usuario</span>
+          <input class="input" type="text" id="login-usuario" autocomplete="username"
+            autocapitalize="none" spellcheck="false" placeholder="El mismo de Gestión" required />
         </label>
         <label class="campo">
           <span>Contraseña</span>
@@ -88,31 +75,7 @@
         </label>
         <p class="form-error oculto" id="login-error"></p>
         <button type="submit" class="btn btn-primario btn-bloque" id="btn-login">Ingresar</button>
-        <p class="auth-alternativa"><a href="#" id="btn-olvide-pass">¿Olvidaste tu contraseña?</a></p>
         <p class="auth-alternativa" id="auth-como-entrar"></p>
-      </form>
-
-      <!-- Registro -->
-      <form id="form-registro" class="oculto" novalidate>
-        <label class="campo">
-          <span>Nombre y apellido</span>
-          <input class="input" type="text" id="reg-nombre" autocomplete="name" required />
-        </label>
-        <label class="campo">
-          <span>Email</span>
-          <input class="input" type="email" id="reg-email" autocomplete="email" required />
-        </label>
-        <label class="campo">
-          <span>Contraseña (mínimo 6 caracteres)</span>
-          <input class="input" type="password" id="reg-pass" autocomplete="new-password" required />
-        </label>
-        <label class="campo">
-          <span>Código de invitación</span>
-          <input class="input" type="text" id="reg-codigo" autocapitalize="characters" autocomplete="off" required />
-        </label>
-        <p class="form-error oculto" id="registro-error"></p>
-        <button type="submit" class="btn btn-primario btn-bloque" id="btn-registro">Crear cuenta</button>
-        <p class="auth-alternativa">¿Ya tenés cuenta? <a href="#" id="ir-login">Ingresar</a></p>
       </form>
     </div>
   </section>

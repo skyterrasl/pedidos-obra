@@ -37,6 +37,34 @@ PO.sso = {
     return this.hayGestion() && !this.salioAProposito();
   },
 
+  /** Entra con usuario y contraseña del ERP. Es el camino normal: no
+      necesita que haya una sesión de Gestión abierta de antes. */
+  async entrarConClave(usuario, clave) {
+    const r = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ usuario, clave })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.token) {
+      const e = new Error(d.error || "No pudimos verificar tu usuario.");
+      e.deCredenciales = r.status === 401 || r.status === 403;
+      throw e;
+    }
+    // Queda la misma sesión que usa Gestión: si después abre el ERP, ya está
+    // adentro, y al volver acá entra solo.
+    try { localStorage.setItem("st-token", d.token); } catch (e) {}
+    this.limpiarSalida();
+
+    const paso = await this.entrar();
+    if (!paso.ok) {
+      const e = new Error(paso.error || "No pudimos entrar.");
+      e.sinAcceso = paso.sinAcceso;
+      throw e;
+    }
+    return paso;
+  },
+
   /** Pide el pase y entra. Devuelve:
         { ok: true }                 entró
         { ok: false, sinAcceso }     el usuario del ERP no tiene permiso acá
