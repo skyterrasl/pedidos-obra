@@ -15,7 +15,8 @@
                                         usuarioNombre, ts, nota }
      pedidos/{id}/fotos/{fid}       → { base64, tipo, recepcionId,
                                         usuarioNombre, ts }
-     contadores/{codigo}   → { ultimo }  (una serie por rubro: ELE-0001)
+     contadores/P-{codigo} → { ultimo }  (pedidos:  P-ELE-0001)
+     contadores/C-{codigo} → { ultimo }  (compras:  C-ELE-0001)
    ============================================================================ */
 
 window.PO = window.PO || {};
@@ -175,12 +176,12 @@ PO.store = {
       return { id: pedidoRef.id, numero: null };
     }
 
-    const cod = codigoRubro || "P";
-    const contadorRef = db.collection("contadores").doc(cod);
+    const serie = "P-" + (codigoRubro || "GEN");
+    const contadorRef = db.collection("contadores").doc(serie);
     const numero = await db.runTransaction(async (tx) => {
       const snap = await tx.get(contadorRef);
       const n = ((snap.exists && snap.data().ultimo) || 0) + 1;
-      const num = cod + "-" + String(n).padStart(4, "0");
+      const num = serie + "-" + String(n).padStart(4, "0");
       tx.set(contadorRef, { ultimo: n });
       tx.set(pedidoRef, { ...datos, numero: num });
       return num;
@@ -191,16 +192,31 @@ PO.store = {
   /** Envía un borrador: le asigna número y lo pasa a "enviado". */
   async enviarBorrador(pedidoId, cambios, codigoRubro) {
     const db = PO.fb.db;
-    const cod = codigoRubro || "P";
-    const contadorRef = db.collection("contadores").doc(cod);
+    const serie = "P-" + (codigoRubro || "GEN");
+    const contadorRef = db.collection("contadores").doc(serie);
     const pedidoRef = db.collection("pedidos").doc(pedidoId);
     return db.runTransaction(async (tx) => {
       const snap = await tx.get(contadorRef);
       const n = ((snap.exists && snap.data().ultimo) || 0) + 1;
-      const num = cod + "-" + String(n).padStart(4, "0");
+      const num = serie + "-" + String(n).padStart(4, "0");
       tx.set(contadorRef, { ultimo: n });
       tx.update(pedidoRef, { ...cambios, numero: num, estado: "enviado" });
       return num;
+    });
+  },
+
+  /** El número de orden de compra, de la serie del rubro. Se pide una sola vez
+      —al cargar el proveedor— y después no cambia: es el número con el que la
+      compra queda identificada. */
+  async siguienteOrdenCompra(codigoRubro) {
+    const db = PO.fb.db;
+    const serie = "C-" + (codigoRubro || "GEN");
+    const ref = db.collection("contadores").doc(serie);
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const n = ((snap.exists && snap.data().ultimo) || 0) + 1;
+      tx.set(ref, { ultimo: n });
+      return serie + "-" + String(n).padStart(4, "0");
     });
   },
 

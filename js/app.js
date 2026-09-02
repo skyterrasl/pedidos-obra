@@ -1120,6 +1120,8 @@ window.PO = window.PO || {};
       return '<li class="pedido-card" data-id="' + esc(p.id) + '">' +
         '<div class="pedido-card-cab"><div class="cab-izq">' +
           '<span class="pedido-numero">' + esc(p.numero || "Borrador") + "</span>" +
+          (p.proveedor && p.proveedor.oc
+            ? '<span class="pedido-oc">' + esc(p.proveedor.oc) + "</span>" : "") +
           (esAtrasado(p) ? '<span class="tag-atrasado">ATRASADO</span>' : "") +
         "</div>" +
           '<span class="badge badge-' + esc(p.estado) + '">' + (ESTADOS[p.estado] || esc(p.estado)) + "</span>" +
@@ -1867,7 +1869,7 @@ window.PO = window.PO || {};
         dato("Proveedor", esc(p.proveedor.nombre)) +
         dato("Entrega estimada", (atrasado ? "<span style='color:var(--peligro)'>" : "<span>") +
           fmtFecha(p.proveedor.fechaEstimada) + "</span>") +
-        (p.proveedor.oc ? dato("Orden de compra", esc(p.proveedor.oc)) : "") +
+        (p.proveedor.oc ? dato("Orden de compra", "<strong>" + esc(p.proveedor.oc) + "</strong>") : "") +
         dato("Entrega", p.proveedor.retira
           ? "<span style='color:var(--alerta)'>Retira " + esc(p.proveedor.retira) + "</span>"
           : "En obra") +
@@ -2050,7 +2052,8 @@ window.PO = window.PO || {};
     const obra = estado.obras.find((o) => o.id === p.obraId);
     const lineas = [];
 
-    lineas.push("Hola! Pedido de Sky Terra" + (p.numero ? " (" + p.numero + ")" : "") + ":");
+    const referencia = (p.proveedor && p.proveedor.oc) || p.numero;
+    lineas.push("Hola! Pedido de Sky Terra" + (referencia ? " (" + referencia + ")" : "") + ":");
     lineas.push("");
     (p.items || []).forEach((it) =>
       lineas.push("- " + fmtCant(it.cantidad) + " " + (it.unidad || "un.") + " · " + it.descripcion));
@@ -2102,7 +2105,6 @@ window.PO = window.PO || {};
     $("proveedor-subtitulo").textContent = p.numero + " · " + p.obraNombre + " (" + p.rubro + ")";
     $("prov-nombre").value = "";
     $("prov-fecha").value = "";
-    $("prov-oc").value = "";
     $("prov-obs").value = "";
     // Precarga lo que pidió el director (retiro/envío + autorizado): admin
     // solo confirma o ajusta, no lo vuelve a cargar.
@@ -2144,7 +2146,6 @@ window.PO = window.PO || {};
     if (!nombre) { mostrarError("proveedor-error", "Indicá el proveedor."); return; }
     if (!fechaEstimada) { mostrarError("proveedor-error", "Indicá la fecha estimada de entrega (con eso se detectan los atrasos)."); return; }
 
-    const oc = $("prov-oc").value.trim();
     const obs = $("prov-obs").value.trim();
     const entregaTipo = $("seg-entrega").querySelector(".seg-btn.activo").dataset.valor; // "obra" | "retira"
     const retira = entregaTipo === "retira" ? $("prov-retira").value.trim() : "";
@@ -2154,15 +2155,19 @@ window.PO = window.PO || {};
     const existe = estado.proveedores.some((x) => (x.nombre || "").toLowerCase() === nombre.toLowerCase());
     const guardarNuevo = !existe && $("prov-guardar").checked;
 
-    const nota = "Proveedor: " + nombre + " · Llega: " + fmtFecha(fechaEstimada) +
-      (oc ? " · OC: " + oc : "") + (retira ? " · Retira: " + retira : "") + (obs ? " · " + obs : "");
-
     $("proveedor-confirmar").disabled = true;
     try {
+      // La orden de compra se numera acá y no cambia más: es el número con el
+      // que se sigue la compra de punta a punta. Va antes de la nota para que
+      // quede en el historial.
+      const oc = await PO.store.siguienteOrdenCompra(codigoDeRubro(p.rubro));
+      const nota = "Compra " + oc + " · Proveedor: " + nombre +
+        " · Llega: " + fmtFecha(fechaEstimada) +
+        (retira ? " · Retira: " + retira : "") + (obs ? " · " + obs : "");
       const proveedor = {
         nombre,
         fechaEstimada,
-        oc: oc || null,
+        oc,
         retira: retira || null,
         observaciones: obs || null,
         usuarioNombre: u.nombre,
