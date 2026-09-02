@@ -3027,16 +3027,16 @@ window.PO = window.PO || {};
          de pantalla. --- */
 
   function temaElegido() {
-    try { return localStorage.getItem("po-tema") || "auto"; } catch (e) { return "auto"; }
+    try { return localStorage.getItem("st-tema") || "auto"; } catch (e) { return "auto"; }
   }
 
   function aplicarTema(t) {
     if (t === "claro" || t === "oscuro") {
       document.documentElement.dataset.tema = t;
-      try { localStorage.setItem("po-tema", t); } catch (e) {}
+      try { localStorage.setItem("st-tema", t); } catch (e) {}
     } else {
       delete document.documentElement.dataset.tema;
-      try { localStorage.removeItem("po-tema"); } catch (e) {}
+      try { localStorage.removeItem("st-tema"); } catch (e) {}
     }
     // La barra del navegador acompaña al fondo real de la app.
     const oscuro = t === "oscuro" ||

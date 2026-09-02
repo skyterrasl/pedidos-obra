@@ -24,7 +24,7 @@
        oscuro se vería un flash blanco en cada apertura. */
     (function () {
       try {
-        var t = localStorage.getItem("po-tema");
+        var t = localStorage.getItem("st-tema");
         if (t === "claro" || t === "oscuro") document.documentElement.dataset.tema = t;
       } catch (e) {}
     })();

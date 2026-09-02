@@ -62,26 +62,26 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema="claro"]) {
-    --bg: #101A24;
-    --bg-2: #18242F;            /* superficie de tarjeta */
-    --bg-input: #1E2C39;
-    --text: #F5F2ED;            /* la crema, ahora como tinta */
-    --text-2: #BCC5CF;
-    --text-3: #939CA6;
-    --accent: #E8E3DB;          /* lo interactivo, en claro sobre oscuro */
+    --bg: #131E29;
+    --bg-2: #1B2A3B;            /* superficie de tarjeta */
+    --bg-input: #223345;
+    --text: #EFEAE1;            /* la crema, ahora como tinta */
+    --text-2: #A7B3BF;
+    --text-3: #8A97A5;
+    --accent: #EFEAE1;          /* lo interactivo, en claro sobre oscuro */
     --accent-bright: #FFFFFF;
-    --line: #2A3946;
-    --line-strong: #3A4A58;
-    --cta-bg: #C9A94E;          /* el dorado toma el lugar del botón */
+    --line: #2B3F55;
+    --line-strong: #3A4F66;
+    --cta-bg: #D4B45E;          /* el dorado toma el lugar del botón */
     --cta-text: #14202B;
-    --ok: #74C285;
-    --warn: #E0A94A;
-    --err: #E88379;
+    --ok: #8FAE8D;
+    --warn: #E5CE8D;
+    --err: #E0B396;
 
-    --acento-suave: rgba(201, 169, 78, 0.22);
+    --acento-suave: rgba(212, 180, 94, 0.22);
     --sombra: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.28);
 
-    --e-borrador-bg: #2A3946;  --e-borrador-tx: #C3CCD6;
+    --e-borrador-bg: #2B3F55;  --e-borrador-tx: #C3CCD6;
     --e-enviado-bg: #3D3117;   --e-enviado-tx: #E8BE6C;
     --e-recibido-bg: #1B333C;  --e-recibido-tx: #86C6D8;
     --e-proveedor-bg: #1F3348; --e-proveedor-tx: #9BBBE4;
@@ -92,26 +92,26 @@
 }
 
 :root[data-tema="oscuro"] {
-  --bg: #101A24;
-  --bg-2: #18242F;
-  --bg-input: #1E2C39;
+  --bg: #131E29;
+  --bg-2: #1B2A3B;
+  --bg-input: #223345;
   --text: #F5F2ED;
-  --text-2: #BCC5CF;
-  --text-3: #939CA6;
-  --accent: #E8E3DB;
+  --text-2: #A7B3BF;
+  --text-3: #8A97A5;
+  --accent: #EFEAE1;
   --accent-bright: #FFFFFF;
-  --line: #2A3946;
-  --line-strong: #3A4A58;
-  --cta-bg: #C9A94E;
+  --line: #2B3F55;
+  --line-strong: #3A4F66;
+  --cta-bg: #D4B45E;
   --cta-text: #14202B;
-  --ok: #74C285;
-  --warn: #E0A94A;
-  --err: #E88379;
+  --ok: #8FAE8D;
+  --warn: #E5CE8D;
+  --err: #E0B396;
 
-  --acento-suave: rgba(201, 169, 78, 0.22);
+  --acento-suave: rgba(212, 180, 94, 0.22);
   --sombra: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.28);
 
-  --e-borrador-bg: #2A3946;  --e-borrador-tx: #C3CCD6;
+  --e-borrador-bg: #2B3F55;  --e-borrador-tx: #C3CCD6;
   --e-enviado-bg: #3D3117;   --e-enviado-tx: #E8BE6C;
   --e-recibido-bg: #1B333C;  --e-recibido-tx: #86C6D8;
   --e-proveedor-bg: #1F3348; --e-proveedor-tx: #9BBBE4;
@@ -123,10 +123,10 @@
 /* La barra superior es petróleo en claro; en oscuro se apoya en la superficie
    para no ser una mancha más clara que el resto. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-tema="claro"]) .topbar { background: var(--bg-2); border-bottom-color: var(--line); }
+  :root:not([data-tema="claro"]) .topbar { background: #0F1822; border-bottom-color: var(--line); }
   :root:not([data-tema="claro"]) .logo-mini { background: var(--cta-bg); color: var(--cta-text); }
 }
-:root[data-tema="oscuro"] .topbar { background: var(--bg-2); border-bottom-color: var(--line); }
+:root[data-tema="oscuro"] .topbar { background: #0F1822; border-bottom-color: var(--line); }
 :root[data-tema="oscuro"] .logo-mini { background: var(--cta-bg); color: var(--cta-text); }
 
 /* El selector de tema, en Perfil */
