@@ -653,10 +653,6 @@ window.PO = window.PO || {};
     $("cancelar-cerrar").addEventListener("click", () => cerrarModal("modal-cancelar"));
     $("cancelar-confirmar").addEventListener("click", onConfirmarCancelacion);
 
-    $("nu-cerrar").addEventListener("click", () => cerrarModal("modal-usuario"));
-    $("nu-crear").addEventListener("click", crearUsuarioNuevo);
-    $("seg-nu-rol").querySelectorAll(".seg-btn").forEach((b) =>
-      b.addEventListener("click", () => setSegmentado("seg-nu-rol", b.dataset.valor)));
 
     // Modal foto
     $("modal-foto").addEventListener("click", () => cerrarModal("modal-foto"));
@@ -2830,166 +2826,29 @@ window.PO = window.PO || {};
 
   /* --- Usuarios --- */
 
-  /** Los que entran con su usuario de Gestión: su rol y su estado los manda
-      el ERP, así que acá son de solo lectura. Cambiarlos desde esta pantalla
-      no serviría de nada — el ERP los volvería a pisar en la próxima entrada. */
-  const esDelErp = (x) => x.origen === "erp";
-
+  /** La lista de usuarios es un espejo del maestro de Gestión: acá se ve
+      quién entra y con qué rol, y se cambia allá. */
   function renderTabUsuarios() {
     const cont = $("gestion-contenido");
-    const delErp = estado.usuarios.filter(esDelErp).length;
 
     cont.innerHTML =
-      '<button type="button" class="btn btn-primario btn-bloque" id="btn-nuevo-usuario">+ Agregar usuario</button>' +
-      '<p class="nota-suave" style="margin:10px 0">Para el equipo no hace falta: quien entra a ' +
-      "Gestión ya entra acá con su mismo usuario, y su rol sale del que tiene allá. " +
-      "Esto es para alguien de afuera del sistema. " +
-      "La asignación de obras a cada director se hace en la pestaña Obras.</p>" +
+      '<p class="nota-suave" style="margin-bottom:10px">Los usuarios son los de ' +
+      "Gestión: se dan de alta, se les cambia el rol y se dan de baja en " +
+      "<strong>Maestros → Solicitantes</strong>, y acá se actualiza solo. " +
+      "La asignación de obras a cada director sí se hace en la pestaña Obras.</p>" +
       '<ul class="lista-gestion">' +
       (estado.usuarios.length ? estado.usuarios.map((x) => {
         const soyYo = x.uid === estado.usuario.uid;
-        const delErpEste = esDelErp(x);
         return '<li class="gestion-item' + (x.activo === false ? " apagado" : "") + '">' +
           "<div><div class='g-titulo'>" + esc(x.nombre) + (soyYo ? " (vos)" : "") + "</div>" +
-          "<div class='g-sub'>" +
-            (delErpEste ? "Entra con su usuario de Gestión" : esc(x.email)) +
-            " · " + rolEtiqueta(x.rol) +
-            (x.activo === false ? " · desactivado" : "") +
+          "<div class='g-sub'>" + rolEtiqueta(x.rol) +
+            (x.activo === false ? " · sin acceso (baja en Gestión)" : "") +
           "</div></div>" +
-          '<div class="g-acciones">' +
-            (delErpEste
-              // Todo lo suyo se administra en Gestión: acá solo se informa.
-              ? '<span class="etiqueta-origen">se administra en Gestión</span>'
-              : '<select class="input input-chico usuario-rol" data-uid="' + esc(x.uid) + '"' + (soyYo ? " disabled" : "") + ">" +
-                  ["director", "admin", "control"].map((r) =>
-                    '<option value="' + r + '"' + (x.rol === r ? " selected" : "") + ">" + r + "</option>").join("") +
-                "</select>" +
-                '<button type="button" class="btn btn-ghost btn-chico usuario-clave" data-uid="' + esc(x.uid) +
-                '">Contraseña</button>' +
-                '<button type="button" class="btn btn-ghost btn-chico usuario-activo" data-uid="' + esc(x.uid) +
-                '" data-activo="' + (x.activo === false ? "0" : "1") + '"' + (soyYo ? " disabled" : "") + ">" +
-                (x.activo === false ? "Activar" : "Desactivar") + "</button>" +
-                (soyYo ? "" :
-                  '<button type="button" class="btn btn-ghost btn-chico usuario-borrar" style="color:var(--peligro)" ' +
-                  'data-uid="' + esc(x.uid) + '">Borrar</button>')) +
-          "</div></li>";
+          "</li>";
       }).join("") : '<li class="lista-vacia">Cargando usuarios…</li>') +
       "</ul>" +
-      (delErp
-        ? '<p class="nota-suave" style="margin-top:10px">' + delErp +
-          (delErp > 1 ? " usuarios entran" : " usuario entra") +
-          " con su cuenta de Gestión. Para cambiarles el rol o darlos de baja, hacelo en " +
-          "Gestión → Usuarios: lo de acá se sincroniza solo.</p>"
-        : "");
+      "";
 
-    cont.querySelectorAll(".usuario-rol").forEach((sel) =>
-      sel.addEventListener("change", async () => {
-        const x = estado.usuarios.find((y) => y.uid === sel.dataset.uid);
-        if (!confirm("¿Cambiar el rol de " + x.nombre + " a “" + sel.value + "”?")) {
-          sel.value = x.rol; return;
-        }
-        try { await PO.store.actualizarUsuario(x.uid, { rol: sel.value }); toast("Rol actualizado."); }
-        catch (e) { toast("No se pudo cambiar: " + (e.message || e)); sel.value = x.rol; }
-      })
-    );
-    cont.querySelectorAll(".usuario-activo").forEach((b) =>
-      b.addEventListener("click", async () => {
-        const x = estado.usuarios.find((y) => y.uid === b.dataset.uid);
-        const activar = b.dataset.activo === "0";
-        try {
-          await PO.store.actualizarUsuario(x.uid, { activo: activar });
-          toast(activar ? "Usuario activado." : "Usuario desactivado.");
-        } catch (e) { toast("No se pudo actualizar: " + (e.message || e)); }
-      })
-    );
-    cont.querySelectorAll(".usuario-clave").forEach((b) =>
-      b.addEventListener("click", async () => {
-        const x = estado.usuarios.find((y) => y.uid === b.dataset.uid);
-        if (!x) return;
-        if (!confirm("Le mandamos a " + x.nombre + " un mail a " + x.email +
-          " para que ponga una contraseña nueva.\n\nLa actual sigue funcionando hasta que la cambie.")) return;
-        b.disabled = true;
-        try {
-          await PO.fb.resetearPassword(x.email);
-          toast("Mail enviado a " + x.email + ".");
-        } catch (e) {
-          toast("No se pudo enviar: " + (e.message || e));
-        }
-        b.disabled = false;
-      })
-    );
-    cont.querySelectorAll(".usuario-borrar").forEach((b) =>
-      b.addEventListener("click", async () => {
-        const x = estado.usuarios.find((y) => y.uid === b.dataset.uid);
-        if (!x) return;
-        const pedidos = estado.pedidos.filter((p) => p.solicitanteUid === x.uid).length;
-        const aviso = pedidos
-          ? "\n\nOJO: hizo " + pedidos + " pedido(s). Quedan en el historial con su " +
-            "nombre, pero se pierde el perfil. Si trabajó de verdad, mejor desactivarlo."
-          : "";
-        if (!confirm("¿Borrar a " + x.nombre + "?" + aviso +
-          "\n\nNo va a poder entrar más, pero su email queda registrado en Firebase: " +
-          "para volver a darle acceso hay que crearlo con otro mail o que se registre con el código.")) return;
-        try {
-          await PO.store.borrarUsuario(x.uid);
-          toast("Usuario borrado.");
-        } catch (e) { toast("No se pudo borrar: " + (e.message || e)); }
-      })
-    );
-
-    $("btn-nuevo-usuario").addEventListener("click", abrirModalUsuario);
-  }
-
-  /* --- Alta de usuario --- */
-
-  function abrirModalUsuario() {
-    $("nu-nombre").value = "";
-    $("nu-email").value = "";
-    $("nu-pass").value = passSugerida();
-    setSegmentado("seg-nu-rol", "director");
-    mostrarError("nu-error", "");
-    $("nu-crear").disabled = false;
-    $("nu-crear").textContent = "Crear usuario";
-    abrirModal("modal-usuario");
-  }
-
-  /** Contraseña provisional fácil de dictar por WhatsApp: sin caracteres que
-      se confundan (l/1, O/0) y con un número al final. */
-  function passSugerida() {
-    const silabas = ["ca", "sa", "to", "re", "ma", "lu", "pi", "ver", "sol", "tra"];
-    let s = "";
-    for (let i = 0; i < 3; i++) s += silabas[Math.floor(Math.random() * silabas.length)];
-    return s + Math.floor(Math.random() * 90 + 10);
-  }
-
-  async function crearUsuarioNuevo() {
-    const nombre = $("nu-nombre").value.trim();
-    const email = $("nu-email").value.trim().toLowerCase();
-    const password = $("nu-pass").value;
-    const rol = valorSegmentado("seg-nu-rol", "director");
-
-    if (!nombre) { mostrarError("nu-error", "Poné el nombre y apellido."); return; }
-    if (!email || !email.includes("@")) { mostrarError("nu-error", "Poné un email válido."); return; }
-    if (password.length < 6) { mostrarError("nu-error", "La contraseña necesita 6 caracteres o más."); return; }
-    mostrarError("nu-error", "");
-
-    const b = $("nu-crear");
-    b.disabled = true;
-    b.textContent = "Creando…";
-    try {
-      await PO.fb.crearOtroUsuario({ email, password, nombre, rol });
-      cerrarModal("modal-usuario");
-      toast(nombre + " ya puede entrar con " + email + ".");
-    } catch (e) {
-      const cod = e && e.code;
-      mostrarError("nu-error",
-        cod === "auth/email-already-in-use" ? "Ese email ya tiene cuenta en la app." :
-        cod === "auth/invalid-email" ? "Ese email no es válido." :
-        cod === "auth/weak-password" ? "La contraseña es muy débil: probá con una más larga." :
-        "No se pudo crear: " + (e.message || e));
-      b.disabled = false;
-      b.textContent = "Crear usuario";
-    }
   }
 
   /* ---------------------------------------------------------------- perfil - */
