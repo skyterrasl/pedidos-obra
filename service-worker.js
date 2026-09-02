@@ -12,13 +12,14 @@
    ¿Cambiaste archivos y no ves la novedad? Subí la versión (v1 → v2).
    ============================================================================ */
 
-const CACHE = "pedidos-obra-v45";
+const CACHE = "pedidos-obra-v46";
 
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
   "./css/estilos.css",
+  "./css/roles.css",
   // Tipografía de marca: precacheada para que en obra sin señal la app se
   // siga viendo con Poppins y no salte a la fuente del sistema.
   "./assets/fuentes/poppins-200.woff2",

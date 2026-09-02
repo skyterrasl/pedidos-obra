@@ -256,8 +256,23 @@ window.PO = window.PO || {};
   const esControl = () => estado.usuario && estado.usuario.rol === "control";
   const esDirector = () => estado.usuario && estado.usuario.rol === "director";
 
-  function rolEtiqueta(rol) {
-    return { director: "Dirección de obra", admin: "Administración", control: "Control (solo lectura)" }[rol] || rol;
+  /** El rol que ve la persona es el de Gestión —"Arquitectura de proyecto",
+      "Compras"—, que es como se reconoce en el resto del sistema. El rol de
+      acá (admin/director) es interno: define permisos, no se muestra. */
+  function rolEtiqueta(u) {
+    if (u && typeof u === "object") {
+      if (u.rolNombre) return u.rolNombre;
+      return { director: "Dirección de obra", admin: "Administración",
+               control: "Control (solo lectura)" }[u.rol] || u.rol;
+    }
+    return { director: "Dirección de obra", admin: "Administración",
+             control: "Control (solo lectura)" }[u] || u;
+  }
+
+  /** La clase del chip, para que el color del rol sea el mismo en todo el ERP. */
+  function claseRol(u) {
+    const r = (u && u.rolErp) || (u && u.rol) || u;
+    return "rol-chip r-" + String(r || "").toLowerCase();
   }
 
   function obrasAsignadas() {
@@ -2837,7 +2852,7 @@ window.PO = window.PO || {};
         const soyYo = x.uid === estado.usuario.uid;
         return '<li class="gestion-item' + (x.activo === false ? " apagado" : "") + '">' +
           "<div><div class='g-titulo'>" + esc(x.nombre) + (soyYo ? " (vos)" : "") + "</div>" +
-          "<div class='g-sub'>" + rolEtiqueta(x.rol) +
+          "<div class='g-sub'><span class='" + claseRol(x) + "'>" + esc(rolEtiqueta(x)) + "</span>" +
             (x.activo === false ? " · sin acceso (baja en Gestión)" : "") +
           "</div></div>" +
           "</li>";
@@ -2858,7 +2873,7 @@ window.PO = window.PO || {};
     ["pedido_nuevo", "pedido_proveedor", "recepcion"].forEach((k) => {
       $("aviso-" + k).checked = avisos[k] !== false;
     });
-    $("perfil-rol").textContent = "Rol: " + rolEtiqueta(u.rol) +
+    $("perfil-rol").textContent = "Rol: " + rolEtiqueta(u) +
       ". El rol lo administra administración.";
     renderTema();
     renderPush();
