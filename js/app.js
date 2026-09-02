@@ -269,10 +269,13 @@ window.PO = window.PO || {};
              control: "Control (solo lectura)" }[u] || u;
   }
 
-  /** La clase del chip, para que el color del rol sea el mismo en todo el ERP. */
+  /** La clase del chip, para que el color del rol sea el mismo en todo el ERP.
+      El rol viaja en el perfil de Firestore y el dueño puede editar su propio
+      perfil, así que el valor NO es de confianza: se limita a letras, números
+      y guiones antes de entrar en el atributo. */
   function claseRol(u) {
     const r = (u && u.rolErp) || (u && u.rol) || u;
-    return "rol-chip r-" + String(r || "").toLowerCase();
+    return "rol-chip r-" + String(r || "").toLowerCase().replace(/[^a-z0-9_-]/g, "");
   }
 
   function obrasAsignadas() {
@@ -2852,7 +2855,7 @@ window.PO = window.PO || {};
         const soyYo = x.uid === estado.usuario.uid;
         return '<li class="gestion-item' + (x.activo === false ? " apagado" : "") + '">' +
           "<div><div class='g-titulo'>" + esc(x.nombre) + (soyYo ? " (vos)" : "") + "</div>" +
-          "<div class='g-sub'><span class='" + claseRol(x) + "'>" + esc(rolEtiqueta(x)) + "</span>" +
+          '<div class="g-sub"><span class="' + esc(claseRol(x)) + '">' + esc(rolEtiqueta(x)) + "</span>" +
             (x.activo === false ? " · sin acceso (baja en Gestión)" : "") +
           "</div></div>" +
           "</li>";
