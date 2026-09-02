@@ -52,6 +52,87 @@
   --e-cancelado-bg: #E8E4DF; --e-cancelado-tx: #655F59;
 }
 
+/* ---------------------------------------------------------- modo oscuro --
+   La misma marca dada vuelta: el petróleo deja de ser la tinta y pasa a ser
+   la superficie; la crema deja de ser el fondo y pasa a ser el texto. El
+   dorado se aclara un punto para que siga destacando.
+
+   Se aplican en dos casos: cuando el teléfono está en oscuro y la persona no
+   eligió nada, y cuando eligió oscuro a mano. */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    --bg: #101A24;
+    --bg-2: #18242F;            /* superficie de tarjeta */
+    --bg-input: #1E2C39;
+    --text: #F5F2ED;            /* la crema, ahora como tinta */
+    --text-2: #BCC5CF;
+    --text-3: #939CA6;
+    --accent: #E8E3DB;          /* lo interactivo, en claro sobre oscuro */
+    --accent-bright: #FFFFFF;
+    --line: #2A3946;
+    --line-strong: #3A4A58;
+    --cta-bg: #C9A94E;          /* el dorado toma el lugar del botón */
+    --cta-text: #14202B;
+    --ok: #74C285;
+    --warn: #E0A94A;
+    --err: #E88379;
+
+    --acento-suave: rgba(201, 169, 78, 0.22);
+    --sombra: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.28);
+
+    --e-borrador-bg: #2A3946;  --e-borrador-tx: #C3CCD6;
+    --e-enviado-bg: #3D3117;   --e-enviado-tx: #E8BE6C;
+    --e-recibido-bg: #1B333C;  --e-recibido-tx: #86C6D8;
+    --e-proveedor-bg: #1F3348; --e-proveedor-tx: #9BBBE4;
+    --e-parcial-bg: #2F2740;   --e-parcial-tx: #C4ADEB;
+    --e-entregado-bg: #1B3520; --e-entregado-tx: #86CF97;
+    --e-cancelado-bg: #262F38; --e-cancelado-tx: #99A3AD;
+  }
+}
+
+:root[data-tema="oscuro"] {
+  --bg: #101A24;
+  --bg-2: #18242F;
+  --bg-input: #1E2C39;
+  --text: #F5F2ED;
+  --text-2: #BCC5CF;
+  --text-3: #939CA6;
+  --accent: #E8E3DB;
+  --accent-bright: #FFFFFF;
+  --line: #2A3946;
+  --line-strong: #3A4A58;
+  --cta-bg: #C9A94E;
+  --cta-text: #14202B;
+  --ok: #74C285;
+  --warn: #E0A94A;
+  --err: #E88379;
+
+  --acento-suave: rgba(201, 169, 78, 0.22);
+  --sombra: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.28);
+
+  --e-borrador-bg: #2A3946;  --e-borrador-tx: #C3CCD6;
+  --e-enviado-bg: #3D3117;   --e-enviado-tx: #E8BE6C;
+  --e-recibido-bg: #1B333C;  --e-recibido-tx: #86C6D8;
+  --e-proveedor-bg: #1F3348; --e-proveedor-tx: #9BBBE4;
+  --e-parcial-bg: #2F2740;   --e-parcial-tx: #C4ADEB;
+  --e-entregado-bg: #1B3520; --e-entregado-tx: #86CF97;
+  --e-cancelado-bg: #262F38; --e-cancelado-tx: #99A3AD;
+}
+
+/* La barra superior es petróleo en claro; en oscuro se apoya en la superficie
+   para no ser una mancha más clara que el resto. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) .topbar { background: var(--bg-2); border-bottom-color: var(--line); }
+  :root:not([data-tema="claro"]) .logo-mini { background: var(--cta-bg); color: var(--cta-text); }
+}
+:root[data-tema="oscuro"] .topbar { background: var(--bg-2); border-bottom-color: var(--line); }
+:root[data-tema="oscuro"] .logo-mini { background: var(--cta-bg); color: var(--cta-text); }
+
+/* El selector de tema, en Perfil */
+.tema-opciones { display: flex; gap: 8px; }
+.tema-opciones .seg-btn { flex: 1; }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* Nada empuja la pantalla al costado: el contenido lo escriben personas
@@ -597,7 +678,7 @@ select.input option { background: var(--bg-2); color: var(--text); }
   text-align: left;
   font-family: inherit;
 }
-.dash-card .d-num { font-size: 26px; font-weight: 700; line-height: 1.1; }
+.dash-card .d-num { font-size: 26px; font-weight: 700; line-height: 1.1; color: var(--texto); }
 .dash-card .d-etiqueta { font-size: 13px; color: var(--texto-suave); font-weight: 600; }
 .dash-card .badge { margin-bottom: 8px; }
 
@@ -1298,7 +1379,8 @@ select.input option { background: var(--bg-2); color: var(--text); }
 .etiqueta-origen {
   font-size: 12px;
   color: var(--texto-suave);
-  background: var(--gris);
+  background: var(--bg-input);
+  border: 1px solid var(--borde);
   border-radius: 999px;
   padding: 4px 10px;
   white-space: nowrap;

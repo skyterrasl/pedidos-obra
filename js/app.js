@@ -368,6 +368,7 @@ window.PO = window.PO || {};
 
   document.addEventListener("DOMContentLoaded", () => {
     conectarEventos();
+    aplicarTema(temaElegido());
     avisarComoEntrar();
     actualizarBannerConexion();
     window.addEventListener("online", actualizarBannerConexion);
@@ -577,6 +578,12 @@ window.PO = window.PO || {};
     // Perfil
     $("form-perfil").addEventListener("submit", onGuardarPerfil);
     $("btn-push").addEventListener("click", alternarPush);
+    $("seg-tema").querySelectorAll(".seg-btn").forEach((b) =>
+      b.addEventListener("click", () => {
+        setSegmentado("seg-tema", b.dataset.valor);
+        aplicarTema(b.dataset.valor);
+      })
+    );
 
 
     // Materiales de un rubro
@@ -2998,6 +3005,7 @@ window.PO = window.PO || {};
     });
     $("perfil-rol").textContent = "Rol: " + rolEtiqueta(u.rol) +
       ". El rol lo administra administración.";
+    renderTema();
     renderPush();
     // Versión: sirve para saber si el celular quedó con una versión vieja
     // cacheada (si acá dice una versión distinta a la última, hay que
@@ -3012,6 +3020,34 @@ window.PO = window.PO || {};
   /* --- Avisos push en este dispositivo ------------------------------------
          Se guardan por dispositivo, no por usuario: el mismo director puede
          tener el celular de obra y el de su casa. --- */
+
+  /* --- Apariencia ---------------------------------------------------------
+         Tres estados: seguir al teléfono (por defecto), claro o oscuro. Lo
+         elegido queda en este dispositivo, como el resto de las preferencias
+         de pantalla. --- */
+
+  function temaElegido() {
+    try { return localStorage.getItem("po-tema") || "auto"; } catch (e) { return "auto"; }
+  }
+
+  function aplicarTema(t) {
+    if (t === "claro" || t === "oscuro") {
+      document.documentElement.dataset.tema = t;
+      try { localStorage.setItem("po-tema", t); } catch (e) {}
+    } else {
+      delete document.documentElement.dataset.tema;
+      try { localStorage.removeItem("po-tema"); } catch (e) {}
+    }
+    // La barra del navegador acompaña al fondo real de la app.
+    const oscuro = t === "oscuro" ||
+      (t === "auto" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", oscuro ? "#18242F" : "#1B2A3B");
+  }
+
+  function renderTema() {
+    setSegmentado("seg-tema", temaElegido());
+  }
 
   async function renderPush() {
     const txt = $("push-estado");

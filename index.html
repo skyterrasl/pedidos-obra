@@ -19,6 +19,16 @@
   <meta name="apple-mobile-web-app-title" content="Pedidos Obra" />
   <meta name="mobile-web-app-capable" content="yes" />
 
+  <script>
+    /* El tema se aplica ANTES de pintar: si esperara al resto del JS, en modo
+       oscuro se vería un flash blanco en cada apertura. */
+    (function () {
+      try {
+        var t = localStorage.getItem("po-tema");
+        if (t === "claro" || t === "oscuro") document.documentElement.dataset.tema = t;
+      } catch (e) {}
+    })();
+  </script>
   <link rel="stylesheet" href="css/estilos.css" />
 </head>
 <body>
@@ -317,6 +327,16 @@
           <p class="form-error oculto" id="perfil-error"></p>
           <button type="submit" class="btn btn-primario btn-bloque" id="btn-guardar-perfil">Guardar perfil</button>
         </form>
+
+        <div class="campo" style="margin-top:18px">
+          <span class="campo-titulo">Apariencia</span>
+          <div class="segmentado tema-opciones" id="seg-tema">
+            <button type="button" class="seg-btn activo" data-valor="auto">Automático</button>
+            <button type="button" class="seg-btn" data-valor="claro">Claro</button>
+            <button type="button" class="seg-btn" data-valor="oscuro">Oscuro</button>
+          </div>
+          <span class="campo-ayuda">Automático sigue lo que tenga el teléfono.</span>
+        </div>
 
         <div class="campo" id="bloque-push" style="margin-top:18px">
           <span class="campo-titulo">Avisos en este celular</span>

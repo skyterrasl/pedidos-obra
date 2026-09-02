@@ -8,7 +8,7 @@ window.APP_CONFIG = {
   /* Versión visible en Perfil. Sirve para saber si un celular está corriendo
      la última versión o quedó con una cacheada. Subirla en cada deploy que
      toque HTML/CSS/JS, igual que el CACHE del service-worker.js. */
-  VERSION: "v40",
+  VERSION: "v41",
 
   /* Registro abierto: APAGADO a propósito (vacío = nadie puede autoregistrarse).
 
