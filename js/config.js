@@ -8,7 +8,7 @@ window.APP_CONFIG = {
   /* Versión visible en Perfil. Sirve para saber si un celular está corriendo
      la última versión o quedó con una cacheada. Subirla en cada deploy que
      toque HTML/CSS/JS, igual que el CACHE del service-worker.js. */
-  VERSION: "v39",
+  VERSION: "v40",
 
   /* Registro abierto: APAGADO a propósito (vacío = nadie puede autoregistrarse).
 
@@ -47,6 +47,25 @@ window.APP_CONFIG = {
      (requisito de iOS, no nuestro). */
   PUSH_URL: "https://srv1795124.hstgr.cloud/push/enviar",
   VAPID_PUBLICA: "BH0jQwn6fVsAs2cSf8s_XrBU3q3RkAn73nRLCXwf3PEj48d8WPxRhdwY5REeOEhFgJmzcSzdvm-ev1E068l9EwI",
+
+  /* Código de cada rubro para numerar sus pedidos: ELE-0001, MG-0002.
+     Cada rubro lleva su propia serie, así el número dice de qué es el pedido
+     sin abrirlo. El código se edita por rubro desde Gestión; esto es solo la
+     sugerencia inicial. Para un rubro sin código se usan las primeras tres
+     letras del nombre. */
+  CODIGOS_RUBRO: {
+    "MATERIALES GRUESOS": "MG",
+    "MADERAS": "MAD",
+    "ELECTRICIDAD": "ELE",
+    "HERRERIA": "HER",
+    "SANITARIOS": "SAN",
+    "HORMIGONES": "HOR",
+    "VOLQUETES": "VOL",
+    "PINTURA": "PIN",
+    "REVESTIMIENTO": "REV",
+    "PORCELANATOS": "POR",
+    "ABERTURAS": "ABE"
+  },
 
   /* Unidades sugeridas al cargar ítems (se puede escribir cualquier otra). */
   UNIDADES: ["un.", "m²", "m³", "kg", "bolsa", "pallet", "ml", "lts"],

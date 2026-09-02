@@ -1,18 +1,18 @@
 /* ============================================================================
    PEDIDOS DE OBRA · SKY TERRA — materiales.js
-   Catálogo de materiales por rubro. De dónde salió cada uno:
+   Catálogo base de materiales por rubro. De dónde salió cada uno:
      MATERIALES GRUESOS / SANITARIOS  "LISTADO DE MATERIALES.xlsx" (2026-07-29)
      MADERAS                          presupuesto de Maderera Newton (incluye
                                       el material de encofrado, que viene del
                                       mismo proveedor y se pide junto)
      PINTURA                          lista de precios de la pinturería
      REVESTIMIENTO                    historial de pedidos al proveedor
+     ELECTRICIDAD                     pedidos reales de obra (2026-09-02),
+                                      normalizados a nombre de producto
 
-   Alimenta el selector al cargar un pedido de esos rubros: el director escribe
-   dos letras y elige de la lista, en vez de tipear todo el nombre. Los
-   materiales que ya se pidieron antes en esa obra/rubro aparecen primero.
-
-   Para actualizarlo: volver a exportar la fuente y regenerar este archivo.
+   Esto es la BASE: desde Gestión → Rubros → Materiales cada rubro puede tener
+   su propia lista, y cuando la tiene, manda la suya. Sirve para arrancar sin
+   cargar nada a mano.
    ============================================================================ */
 
 window.MATERIALES_CATALOGO = {
@@ -714,6 +714,101 @@ window.MATERIALES_CATALOGO = {
     "VIGA H20 3MTS",
     "VIGA H20 4.1MTS",
     "VIGA H20 5.4MTS"
+  ],
+  "ELECTRICIDAD": [
+    "BARRA COLECTORA PUESTA A TIERRA 12 CONEXIONES",
+    "BORNERA 30 SALIDAS UNIPOLAR",
+    "BORNERA REPARTIDORA TETRAPOLAR DIN",
+    "CABLE 6 MM VERDE Y AMARILLO",
+    "CABLE SUBTERRANEO 4x10",
+    "CABLE UNIPOLAR 6 MM CELESTE",
+    "CABLE UNIPOLAR 6 MM MARRON",
+    "CABLE UNIPOLAR 6 MM NEGRO",
+    "CABLE UNIPOLAR 6 MM ROJO",
+    "CAJA DE PASE 20x20 ROKER",
+    "CAJA MIÑON",
+    "CAJA OCTOGONAL",
+    "CAJA OCTOGONAL METALICA",
+    "CAJA RECTANGULAR",
+    "CAJA RECTANGULAR METALICA",
+    "CAÑO CORRUGADO 1 1/2\" (ROLLO)",
+    "CAÑO CORRUGADO 1\" (ROLLO)",
+    "CAÑO CORRUGADO 3/4\" (ROLLO)",
+    "CAÑO CORRUGADO 7/8\" (ROLLO)",
+    "CAÑO CORRUGADO GRIS PESADO 1\" PARA HORMIGON (ROLLO)",
+    "CAÑO CORRUGADO GRIS PESADO 7/8\" PARA HORMIGON (ROLLO)",
+    "CAÑO RIGIDO 3/4\"",
+    "CAÑO RIGIDO 7/8\"",
+    "CAÑO RIGIDO SISTELECTRIC GENROD 3/4\"",
+    "CAÑO RIGIDO SISTELECTRIC GENROD 7/8\"",
+    "CENTENAC 4 MM x 2",
+    "CINTA AISLADORA",
+    "CINTA AISLADORA 3M",
+    "CINTA AISLADORA DE CAUCHO",
+    "CINTA DE EMBALAR",
+    "CONECTOR METAL 3/4\"",
+    "CONECTOR METAL 7/8\"",
+    "CONECTOR PVC 3/4\"",
+    "CONECTOR PVC 7/8\"",
+    "CURVA PARA CAÑO RIGIDO 7/8\"",
+    "DISYUNTOR 2x40",
+    "DISYUNTOR 32 A",
+    "DISYUNTOR 4x40",
+    "DISYUNTOR MONOFASICO 40 A",
+    "GRAMPA PVC 3/4\"",
+    "GRAMPA PVC 7/8\"",
+    "KIT JABALINA 3/4\"",
+    "LAMPARA LED GU10",
+    "MANGUITO 6 MM",
+    "MEDIO TECLON COMBINADO BAUHAUS",
+    "OJO DE BUEY TRIFASICO DIN",
+    "PEINE PUENTE BIPOLAR",
+    "PRECINTOS 20 CM",
+    "PRECINTOS 25 CM",
+    "PRECINTOS 30 CM",
+    "PROTECTOR DE TENSION TRIFASICO",
+    "ROLLO CABLE 1,5 MM BLANCO",
+    "ROLLO CABLE 1,5 MM CELESTE",
+    "ROLLO CABLE 1,5 MM NEGRO",
+    "ROLLO CABLE 1,5 MM ROJO",
+    "ROLLO CABLE 2,5 MM CELESTE",
+    "ROLLO CABLE 2,5 MM MARRON",
+    "ROLLO CABLE 2,5 MM NEGRO",
+    "ROLLO CABLE 2,5 MM ROJO",
+    "ROLLO CABLE 2,5 MM VERDE Y AMARILLO",
+    "ROLLO CABLE 4 MM CELESTE",
+    "ROLLO CABLE 4 MM MARRON",
+    "ROLLO CABLE 4 MM NEGRO",
+    "ROLLO CABLE 4 MM ROJO",
+    "SINTENAX SUBTERRANEO 2x1,5 MM",
+    "SINTENAX SUBTERRANEO 2x16 MM",
+    "SINTENAX SUBTERRANEO 2x2,5 MM",
+    "TABLERO 45 BOCAS",
+    "TABLERO METALICO 120 BOCAS PROF. 15 CM",
+    "TARUGO Y TORNILLO 6\"",
+    "TECLA 1 PUNTO",
+    "TECLA 2 PUNTOS",
+    "TECLA 3 PUNTOS",
+    "TECLON COMBINADO BAUHAUS",
+    "TERMICA 2x10",
+    "TERMICA 2x16",
+    "TERMICA 2x20",
+    "TERMICA 4x25",
+    "TERMICA 4x32",
+    "TERMICA UNIPOLAR 32 A",
+    "TERMINAL 1,5 MM",
+    "TERMINAL 10 MM",
+    "TERMINAL 2,5 MM",
+    "TERMINAL 4 MM",
+    "TERMINAL 6 MM",
+    "TERMINAL OJAL",
+    "TERMOMAGNETICA 32 A",
+    "TOMA DOBLE",
+    "TOMA DOBLE CON USB",
+    "TOMA Y PUNTO",
+    "TORNILLO T1 PUNTA MECHA",
+    "UNION PVC 3/4\"",
+    "UNION PVC 7/8\""
   ],
   "PINTURA": [
     "AGUARRAS THAXORRAS X 5LT",

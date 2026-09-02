@@ -15,7 +15,7 @@
                                         usuarioNombre, ts, nota }
      pedidos/{id}/fotos/{fid}       → { base64, tipo, recepcionId,
                                         usuarioNombre, ts }
-     contadores/pedidos    → { ultimo }  (numeración P-0001)
+     contadores/{codigo}   → { ultimo }  (una serie por rubro: ELE-0001)
    ============================================================================ */
 
 window.PO = window.PO || {};
@@ -163,9 +163,10 @@ PO.store = {
       );
   },
 
-  /** Crea un pedido. Si nace "enviado" recibe número secuencial (P-0001)
-      vía transacción; un borrador queda sin número hasta que se envía. */
-  async crearPedido(datos) {
+  /** Crea un pedido. Si nace "enviado" recibe su número de la serie del
+      rubro (ELE-0001) vía transacción; un borrador queda sin número hasta que
+      se envía. El código del rubro lo resuelve quien llama (sabe los rubros). */
+  async crearPedido(datos, codigoRubro) {
     const db = PO.fb.db;
     const pedidoRef = db.collection("pedidos").doc();
 
@@ -174,11 +175,12 @@ PO.store = {
       return { id: pedidoRef.id, numero: null };
     }
 
-    const contadorRef = db.collection("contadores").doc("pedidos");
+    const cod = codigoRubro || "P";
+    const contadorRef = db.collection("contadores").doc(cod);
     const numero = await db.runTransaction(async (tx) => {
       const snap = await tx.get(contadorRef);
       const n = ((snap.exists && snap.data().ultimo) || 0) + 1;
-      const num = "P-" + String(n).padStart(4, "0");
+      const num = cod + "-" + String(n).padStart(4, "0");
       tx.set(contadorRef, { ultimo: n });
       tx.set(pedidoRef, { ...datos, numero: num });
       return num;
@@ -187,14 +189,15 @@ PO.store = {
   },
 
   /** Envía un borrador: le asigna número y lo pasa a "enviado". */
-  async enviarBorrador(pedidoId, cambios) {
+  async enviarBorrador(pedidoId, cambios, codigoRubro) {
     const db = PO.fb.db;
-    const contadorRef = db.collection("contadores").doc("pedidos");
+    const cod = codigoRubro || "P";
+    const contadorRef = db.collection("contadores").doc(cod);
     const pedidoRef = db.collection("pedidos").doc(pedidoId);
     return db.runTransaction(async (tx) => {
       const snap = await tx.get(contadorRef);
       const n = ((snap.exists && snap.data().ultimo) || 0) + 1;
-      const num = "P-" + String(n).padStart(4, "0");
+      const num = cod + "-" + String(n).padStart(4, "0");
       tx.set(contadorRef, { ultimo: n });
       tx.update(pedidoRef, { ...cambios, numero: num, estado: "enviado" });
       return num;

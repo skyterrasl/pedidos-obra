@@ -155,6 +155,9 @@ window.PO = window.PO || {};
     { nombre: "PASEO HARAS", estado: "por_comenzar" },
     { nombre: "PUE-131", estado: "activa" },
     { nombre: "PUE-253", estado: "activa" },
+    { nombre: "PUE-277", estado: "activa" },
+    { nombre: "ALC-139", estado: "activa" },
+    { nombre: "CAN-283", estado: "activa" },
     { nombre: "PUE-306", estado: "activa" },
     { nombre: "RAI-026", estado: "por_comenzar" },
     { nombre: "RIB-082", estado: "activa" },
@@ -531,6 +534,12 @@ window.PO = window.PO || {};
     $("btn-guardar-borrador").addEventListener("click", () => guardarPedido("borrador"));
     $("form-pedido").addEventListener("input", autoguardar);
     // Si cambia obra o rubro, la lista de materiales abierta ya no aplica.
+    $("pedido-obra-buscar").addEventListener("input", () => {
+      sincronizarObraEscrita();
+      cerrarPanelMateriales();
+      autoguardar();
+    });
+    $("pedido-obra-buscar").addEventListener("change", sincronizarObraEscrita);
     $("pedido-obra").addEventListener("change", cerrarPanelMateriales);
     $("pedido-rubro").addEventListener("change", () => {
       cerrarPanelMateriales();
@@ -615,6 +624,12 @@ window.PO = window.PO || {};
         $("prov-retira-wrap").classList.toggle("oculto", b.dataset.valor !== "retira");
       })
     );
+    $("prov-elegir").addEventListener("change", () => {
+      const otro = $("prov-elegir").value === "__otro__";
+      $("prov-nombre").classList.toggle("oculto", !otro);
+      $("prov-guardar-wrap").classList.toggle("oculto", !otro);
+      if (otro) $("prov-nombre").focus();
+    });
     $("prov-nombre").addEventListener("input", () => {
       const v = $("prov-nombre").value.trim().toLowerCase();
       const existe = estado.proveedores.some((p) => (p.nombre || "").toLowerCase() === v);
@@ -1142,6 +1157,11 @@ window.PO = window.PO || {};
     // Un toque menos en el caso más común: si solo tiene una obra asignada, se precarga.
     if (disponibles.length === 1) $("pedido-obra").value = disponibles[0].id;
 
+    // El campo donde se escribe: la lista sugiere mientras tipeás.
+    $("lista-obras").innerHTML = disponibles
+      .map((o) => '<option value="' + esc(o.nombre) + '"></option>').join("");
+    $("pedido-obra-buscar").value = disponibles.length === 1 ? disponibles[0].nombre : "";
+
     $("pedido-rubro").innerHTML = '<option value="">Elegí el rubro…</option>' +
       estado.rubros.map((r) =>
         '<option value="' + esc(r.nombre) + '">' + esc(r.nombre) + "</option>"
@@ -1149,8 +1169,6 @@ window.PO = window.PO || {};
 
     // Se precarga hoy: para el pedido normal alcanza tal cual, y para uno con
     // fecha puntual el director solo toca una vez para cambiarla.
-    $("pedido-fecha").value = hoyISO();
-    $("pedido-fecha").min = hoyISO();
     $("pedido-obs").value = "";
     setEntregaPedido("obra");
     $("pedido-autorizado").value = "";
@@ -1170,8 +1188,8 @@ window.PO = window.PO || {};
 
     if (editando) {
       $("pedido-obra").value = editando.obraId;
+      $("pedido-obra-buscar").value = editando.obraNombre || "";
       $("pedido-rubro").value = editando.rubro;
-      $("pedido-fecha").value = editando.fechaNecesaria || "";
       $("pedido-obs").value = editando.observaciones || "";
       setEntregaPedido((editando.entrega && editando.entrega.tipo) || "obra");
       $("pedido-autorizado").value = (editando.entrega && editando.entrega.autorizado) || "";
@@ -1185,6 +1203,7 @@ window.PO = window.PO || {};
       const d = estado.duplicarDe;
       estado.duplicarDe = null;
       $("pedido-obra").value = d.obraId || "";
+      $("pedido-obra-buscar").value = d.obraNombre || "";
       $("pedido-rubro").value = d.rubro || "";
       if (!cargarDetalleRubro(d.detalleRubro)) {
         (d.items || []).forEach((it) => agregarFilaItem(it));
@@ -1201,6 +1220,25 @@ window.PO = window.PO || {};
 
   /* --- Rubros con formulario propio: no se piden "materiales" sueltos sino
          los datos que realmente hacen falta para ese servicio. --- */
+
+  /** Lo que se escribió en el campo de obra, pasado al id que se guarda.
+      Acepta el nombre completo o cualquier parte (el código, la calle). */
+  function sincronizarObraEscrita() {
+    const texto = $("pedido-obra-buscar").value.trim();
+    const sel = $("pedido-obra");
+    if (!texto) { sel.value = ""; return; }
+
+    const opciones = Array.from(sel.options).filter((o) => o.value);
+    const exacta = opciones.find((o) => clave(o.textContent) === clave(texto));
+    const parcial = opciones.filter((o) => clave(o.textContent).includes(clave(texto)));
+    const elegida = exacta || (parcial.length === 1 ? parcial[0] : null);
+
+    sel.value = elegida ? elegida.value : "";
+    // Al elegir de la lista, se completa el nombre entero.
+    if (elegida && clave(elegida.textContent) !== clave(texto) && exacta) {
+      $("pedido-obra-buscar").value = elegida.textContent;
+    }
+  }
 
   function tipoFormulario(rubro) {
     const k = clave(rubro);
@@ -1363,6 +1401,20 @@ window.PO = window.PO || {};
     return k ? cat[k] : [];
   }
 
+  /** El código con el que se numeran los pedidos de un rubro (ELE-0001). Sale
+      del rubro si lo tiene cargado; si no, del sugerido en config; y si el
+      rubro es nuevo, de sus primeras tres letras. */
+  function codigoDeRubro(nombreRubro) {
+    const r = estado.rubros.find((x) => clave(x.nombre) === clave(nombreRubro));
+    if (r && r.codigo) return String(r.codigo).toUpperCase();
+    const sug = window.APP_CONFIG.CODIGOS_RUBRO || {};
+    const k = Object.keys(sug).find((x) => clave(x) === clave(nombreRubro));
+    if (k) return sug[k];
+    return String(nombreRubro || "P")
+      .normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase() || "P";
+  }
+
   function materialesSugeridos() {
     const obraSel = $("pedido-obra").value;
     const rubroSel = $("pedido-rubro").value;
@@ -1522,9 +1574,9 @@ window.PO = window.PO || {};
       try {
         const datos = {
           obraId: $("pedido-obra").value,
+          obraNombre: $("pedido-obra-buscar").value,
           rubro: $("pedido-rubro").value,
           entrega: leerEntrega(),
-          fechaNecesaria: $("pedido-fecha").value,
           observaciones: $("pedido-obs").value,
           detalleRubro: detalleRubroActual(),
           items: Array.from($("items-editor").children).map((f) => ({
@@ -1546,8 +1598,8 @@ window.PO = window.PO || {};
       datos.obraId || datos.observaciones || datos.detalleRubro;
     if (!tieneAlgo) return false;
     $("pedido-obra").value = datos.obraId || "";
+    $("pedido-obra-buscar").value = datos.obraNombre || "";
     $("pedido-rubro").value = datos.rubro || "";
-    $("pedido-fecha").value = datos.fechaNecesaria || "";
     $("pedido-obs").value = datos.observaciones || "";
     setEntregaPedido((datos.entrega && datos.entrega.tipo) || "obra");
     $("pedido-autorizado").value = (datos.entrega && datos.entrega.autorizado) || "";
@@ -1584,10 +1636,6 @@ window.PO = window.PO || {};
     const rubro = $("pedido-rubro").value;
     if (!rubro) { mostrarError("pedido-error", "Elegí el rubro (un pedido por rubro)."); return; }
 
-    const fechaNecesaria = $("pedido-fecha").value;
-    if (modo === "enviado" && !fechaNecesaria) {
-      mostrarError("pedido-error", "Indicá para cuándo se necesita."); return;
-    }
 
     const res = leerItemsSegunRubro();
     if (res.error) { mostrarError("pedido-error", res.error); return; }
@@ -1604,7 +1652,6 @@ window.PO = window.PO || {};
           obraId, obraNombre: obra.nombre, rubro,
           entrega: leerEntrega(),
           detalleRubro: res.extra || null,
-          fechaNecesaria: fechaNecesaria || null,
           observaciones: $("pedido-obs").value.trim(),
           items: res.items
         };
@@ -1616,7 +1663,7 @@ window.PO = window.PO || {};
           const historial = (p.historial || []).concat([{
             accion: "enviado", usuarioNombre: u.nombre, ts: ahora, nota: ""
           }]);
-          const numero = await PO.store.enviarBorrador(p.id, { ...campos, historial });
+          const numero = await PO.store.enviarBorrador(p.id, { ...campos, historial }, codigoDeRubro(rubro));
           PO.store.notificarTransicion("enviado",
             { ...p, ...campos, id: p.id, numero, estado: "enviado" }, u);
           toast("Pedido " + numero + " enviado.");
@@ -1640,14 +1687,13 @@ window.PO = window.PO || {};
         creado: PO.fb.tsServidor(),
         entrega: leerEntrega(),
         detalleRubro: res.extra || null,
-        fechaNecesaria: fechaNecesaria || null,
         estado: modo,
         observaciones: $("pedido-obs").value.trim(),
         items: res.items,
         proveedor: null,
         historial
       };
-      const creado = await PO.store.crearPedido(datos);
+      const creado = await PO.store.crearPedido(datos, codigoDeRubro(rubro));
       limpiarAutosave();
       if (modo === "enviado") {
         PO.store.notificarTransicion("enviado", { ...datos, id: creado.id, numero: creado.numero }, u);
@@ -1979,16 +2025,12 @@ window.PO = window.PO || {};
   async function enviarBorradorDesdeDetalle() {
     const p = pedidoAbierto();
     if (!p) return;
-    if (!p.fechaNecesaria) {
-      toast("Al borrador le falta la fecha necesaria: editalo antes de enviarlo.");
-      return;
-    }
     const u = estado.usuario;
     try {
       const historial = (p.historial || []).concat([{
         accion: "enviado", usuarioNombre: u.nombre, ts: PO.fb.tsAhora(), nota: ""
       }]);
-      const numero = await PO.store.enviarBorrador(p.id, { historial });
+      const numero = await PO.store.enviarBorrador(p.id, { historial }, codigoDeRubro(p.rubro));
       PO.store.notificarTransicion("enviado", { ...p, numero, estado: "enviado" }, u);
       toast("Pedido " + numero + " enviado.");
     } catch (e) {
@@ -2068,11 +2110,22 @@ window.PO = window.PO || {};
     $("prov-retira-wrap").classList.toggle("oculto", !pidioRetiro);
     $("prov-guardar-wrap").classList.add("oculto");
     $("prov-guardar").checked = true;
-    // Datalist: primero los proveedores del rubro del pedido
+    // Desplegable: arriba los del rubro del pedido, que son los candidatos
+    // reales; el resto abajo, y al final la opción de cargar uno nuevo.
     const delRubro = estado.proveedores.filter((x) => (x.rubros || []).includes(p.rubro));
     const resto = estado.proveedores.filter((x) => !(x.rubros || []).includes(p.rubro));
-    $("lista-proveedores").innerHTML = delRubro.concat(resto)
-      .map((x) => '<option value="' + esc(x.nombre) + '"></option>').join("");
+    const opcion = (x) => '<option value="' + esc(x.nombre) + '">' + esc(x.nombre) + '</option>';
+    $("prov-elegir").innerHTML =
+      '<option value="">Elegí el proveedor…</option>' +
+      (delRubro.length
+        ? '<optgroup label="De ' + esc(p.rubro) + '">' + delRubro.map(opcion).join("") + '</optgroup>'
+        : "") +
+      (resto.length
+        ? '<optgroup label="Otros rubros">' + resto.map(opcion).join("") + '</optgroup>'
+        : "") +
+      '<option value="__otro__">+ Otro proveedor…</option>';
+    $("prov-elegir").value = "";
+    $("prov-nombre").classList.add("oculto");
     mostrarError("proveedor-error", "");
     abrirModal("modal-proveedor");
   }
@@ -2080,7 +2133,10 @@ window.PO = window.PO || {};
   async function onConfirmarProveedor() {
     const p = pedidoAbierto();
     if (!p) return;
-    const nombre = $("prov-nombre").value.trim();
+    const elegido = $("prov-elegir").value;
+    const nombre = elegido === "__otro__" || !elegido
+      ? $("prov-nombre").value.trim()
+      : elegido;
     const fechaEstimada = $("prov-fecha").value;
     if (!nombre) { mostrarError("proveedor-error", "Indicá el proveedor."); return; }
     if (!fechaEstimada) { mostrarError("proveedor-error", "Indicá la fecha estimada de entrega (con eso se detectan los atrasos)."); return; }
@@ -3040,6 +3096,7 @@ window.PO = window.PO || {};
     renderNotificaciones,
     renderBadgeCampana,
     prepararFormNuevo,
+    codigoDeRubro,
     abrirModalRecepcion,
     abrirModalProveedor,
     abrirModal,

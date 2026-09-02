@@ -149,7 +149,10 @@
         <form id="form-pedido" novalidate>
           <label class="campo">
             <span>Obra</span>
-            <select class="input" id="pedido-obra" required></select>
+            <input class="input" type="text" id="pedido-obra-buscar" list="lista-obras"
+              autocomplete="off" placeholder="Escribí el código o el nombre…" />
+            <datalist id="lista-obras"><!-- por JS --></datalist>
+            <select class="input oculto" id="pedido-obra" required></select>
           </label>
 
           <label class="campo">
@@ -157,10 +160,6 @@
             <select class="input" id="pedido-rubro" required></select>
           </label>
 
-          <label class="campo">
-            <span>Se necesita para el</span>
-            <input class="input" type="date" id="pedido-fecha" required />
-          </label>
 
           <div class="campo" id="bloque-entrega">
             <span class="campo-titulo">¿Cómo llega el material?</span>
@@ -349,9 +348,9 @@
       <p class="nota-suave" id="proveedor-subtitulo"></p>
       <label class="campo">
         <span>Proveedor</span>
-        <input class="input" type="text" id="prov-nombre" list="lista-proveedores"
-          placeholder="Elegí de la lista o escribí uno nuevo" />
-        <datalist id="lista-proveedores"><!-- por JS --></datalist>
+        <select class="input" id="prov-elegir"><!-- por JS --></select>
+        <input class="input oculto" type="text" id="prov-nombre" autocomplete="off"
+          placeholder="Nombre del proveedor nuevo" style="margin-top:8px" />
       </label>
       <label class="check-fila oculto" id="prov-guardar-wrap">
         <input type="checkbox" id="prov-guardar" checked />
