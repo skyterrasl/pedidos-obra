@@ -15,8 +15,7 @@
                                         usuarioNombre, ts, nota }
      pedidos/{id}/fotos/{fid}       → { base64, tipo, recepcionId,
                                         usuarioNombre, ts }
-     contadores/P-{codigo} → { ultimo }  (pedidos:  P-ELE-0001)
-     contadores/C-{codigo} → { ultimo }  (compras:  C-ELE-0001)
+     contadores/P-{codigo} → { ultimo }  (una serie por rubro: P-ELE-0001)
    ============================================================================ */
 
 window.PO = window.PO || {};
@@ -205,20 +204,6 @@ PO.store = {
     });
   },
 
-  /** El número de orden de compra, de la serie del rubro. Se pide una sola vez
-      —al cargar el proveedor— y después no cambia: es el número con el que la
-      compra queda identificada. */
-  async siguienteOrdenCompra(codigoRubro) {
-    const db = PO.fb.db;
-    const serie = "C-" + (codigoRubro || "GEN");
-    const ref = db.collection("contadores").doc(serie);
-    return db.runTransaction(async (tx) => {
-      const snap = await tx.get(ref);
-      const n = ((snap.exists && snap.data().ultimo) || 0) + 1;
-      tx.set(ref, { ultimo: n });
-      return serie + "-" + String(n).padStart(4, "0");
-    });
-  },
 
   async actualizarPedido(pedidoId, cambios) {
     await PO.fb.db.collection("pedidos").doc(pedidoId).update(cambios);
