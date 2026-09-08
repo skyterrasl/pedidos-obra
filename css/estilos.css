@@ -418,17 +418,22 @@ body.hay-offline .topbar { top: 32px; }
 .btn-flotante {
   position: fixed;
   right: 16px;
-  bottom: calc(74px + env(safe-area-inset-bottom));
+  bottom: calc(70px + env(safe-area-inset-bottom));
   z-index: 40;
-  /* Acción principal de la app: botón crema del sistema (guía §5). */
+  /* Redondo: siendo fijo, uno ancho tapaba una fila entera de la lista al
+     scrollear. Así tapa una esquina y se entiende igual. */
   background: var(--cta-bg);
   color: var(--cta-text);
   border: none;
-  border-radius: 4px;
-  padding: 15px 24px;
+  border-radius: 999px;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   font-size: 13px;
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 0.1em;
   font-family: inherit;
   box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.8);
@@ -447,24 +452,39 @@ body.hay-offline .topbar { top: 32px; }
   z-index: 45;
   background: var(--tarjeta);
   border-top: 1px solid var(--borde);
+  /* Sombra hacia arriba: despega la barra del contenido que pasa por debajo. */
+  box-shadow: 0 -1px 3px rgba(27, 42, 59, 0.05);
   display: flex;
   justify-content: space-around;
-  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
 }
 .nav-item {
   flex: 1;
   max-width: 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
   border: none;
   background: transparent;
   color: var(--texto-suave);
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 9px 4px;
+  letter-spacing: 0.2px;
+  /* Área de toque cómoda aunque el ícono sea chico (iOS pide 44 pt). */
+  min-height: 48px;
+  padding: 6px 2px;
   border-radius: 10px;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
-.nav-item.activo { color: var(--acento); background: var(--acento-suave); }
+.nav-item svg { width: 21px; height: 21px; flex: none; }
+.nav-item span { line-height: 1; }
+/* El activo se marca con el color y el peso, no con un bloque de fondo: en una
+   barra de cuatro, el rectángulo se comía media pantalla. */
+.nav-item.activo { color: var(--acento); font-weight: 700; }
+.nav-item.activo svg { stroke-width: 2.4; }
 
 /* ------------------------------------------------------------- formularios  */
 
