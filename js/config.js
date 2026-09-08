@@ -8,7 +8,7 @@ window.APP_CONFIG = {
   /* Versión visible en Perfil. Sirve para saber si un celular está corriendo
      la última versión o quedó con una cacheada. Subirla en cada deploy que
      toque HTML/CSS/JS, igual que el CACHE del service-worker.js. */
-  VERSION: "v47",
+  VERSION: "v50",
 
   /* Registro abierto: APAGADO a propósito (vacío = nadie puede autoregistrarse).
 
@@ -61,6 +61,7 @@ window.APP_CONFIG = {
     "SANITARIOS": "SAN",
     "HORMIGONES": "HOR",
     "VOLQUETES": "VOL",
+    "BAÑOS QUIMICOS": "BQ",
     "PINTURA": "PIN",
     "REVESTIMIENTO": "REV",
     "PORCELANATOS": "POR",
@@ -81,6 +82,7 @@ window.APP_CONFIG = {
     "SANITARIOS",
     "HORMIGONES",
     "VOLQUETES",
+    "BAÑOS QUIMICOS",
     "PINTURA",
     "REVESTIMIENTO",
     "PORCELANATOS",

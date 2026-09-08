@@ -9,7 +9,9 @@
   <!-- PWA: permite "agregar a la pantalla de inicio" -->
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
-  <link rel="icon" type="image/png" href="assets/icons/icon-192.png" />
+  <!-- Mismo monograma petróleo+dorado que el resto de las puertas de Gestión
+       (S/C/SIC/O) — la pestaña del navegador usa este SVG, no el PNG. -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%231B2A3B'/><text x='50' y='70' font-size='54' text-anchor='middle' fill='%23B8973E' font-family='Georgia'>P</text></svg>" />
 
   <!-- iOS/Safari no lee el manifest para esto: sin estas etiquetas, abrir la
        app agregada a la pantalla de inicio la mete dentro de Safari (con
@@ -24,9 +26,17 @@
        oscuro se vería un flash blanco en cada apertura. */
     (function () {
       try {
-        var t = localStorage.getItem("st-tema");
+        /* Tema de fábrica CLARO (03-sep-2026): sin preferencia guardada antes
+           decidía el sistema operativo del celular. "auto" sigue estando pero
+           hay que elegirlo. Mismo criterio que las otras 4 puertas. */
+        if (!localStorage.getItem("st-tema-defecto-claro")) {
+          localStorage.removeItem("st-tema");
+          localStorage.removeItem("obra_tema");
+          localStorage.setItem("st-tema-defecto-claro", "1");
+        }
+        var t = localStorage.getItem("st-tema") || "claro";
         if (t === "claro" || t === "oscuro") document.documentElement.dataset.tema = t;
-      } catch (e) {}
+      } catch (e) { document.documentElement.dataset.tema = "claro"; }
     })();
   </script>
   <link rel="stylesheet" href="css/estilos.css" />
@@ -100,6 +110,7 @@
         <span class="topbar-sub">SKY TERRA</span>
       </div>
       <div class="topbar-derecha">
+        <button class="btn-tema-topbar" id="btn-tema-topbar" aria-label="Cambiar tema"></button>
         <button class="btn-campana" id="btn-campana" aria-label="Notificaciones">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -187,16 +198,14 @@
           </label>
 
           <!-- VOLQUETES: no se piden "materiales", se pide un servicio. -->
-          <div class="campo oculto" id="form-volquetes">
+          <!-- Servicios (volquetes, baños químicos): no se piden materiales,
+               se pide el servicio. Los botones los pone el JS según el rubro. -->
+          <div class="campo oculto" id="form-servicio">
             <span class="campo-titulo">¿Qué necesitás?</span>
-            <div class="segmentado" id="seg-volquete">
-              <button type="button" class="seg-btn activo" data-valor="pedido">Pedido</button>
-              <button type="button" class="seg-btn" data-valor="recambio">Recambio</button>
-              <button type="button" class="seg-btn" data-valor="retiro">Retiro</button>
-            </div>
+            <div class="segmentado" id="seg-servicio"><!-- por JS --></div>
             <label class="campo" style="margin-top:14px">
               <span>¿Cuántos?</span>
-              <input class="input" type="text" inputmode="numeric" id="volquete-cantidad" value="1" />
+              <input class="input" type="text" inputmode="numeric" id="servicio-cantidad" value="1" />
             </label>
           </div>
 

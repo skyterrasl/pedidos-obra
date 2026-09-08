@@ -387,6 +387,7 @@ window.PO = window.PO || {};
   document.addEventListener("DOMContentLoaded", () => {
     conectarEventos();
     aplicarTema(temaElegido());
+    pintarTemaTopbar();
     avisarComoEntrar();
     actualizarBannerConexion();
     window.addEventListener("online", actualizarBannerConexion);
@@ -566,7 +567,7 @@ window.PO = window.PO || {};
       autoguardar();
     });
     // Segmentados de los formularios por rubro
-    ["seg-volquete", "seg-bomba"].forEach((id) =>
+    ["seg-bomba"].forEach((id) =>
       $(id).querySelectorAll(".seg-btn").forEach((b) =>
         b.addEventListener("click", () => { setSegmentado(id, b.dataset.valor); autoguardar(); })
       )
@@ -600,8 +601,10 @@ window.PO = window.PO || {};
       b.addEventListener("click", () => {
         setSegmentado("seg-tema", b.dataset.valor);
         aplicarTema(b.dataset.valor);
+        pintarTemaTopbar();
       })
     );
+    $("btn-tema-topbar").addEventListener("click", cambiarTemaTopbar);
 
 
     // Materiales de un rubro
@@ -1261,17 +1264,38 @@ window.PO = window.PO || {};
     }
   }
 
+  /* Rubros que no se piden por material sino por servicio: se pide, se
+     atiende y se retira. Lo único que cambia entre uno y otro es cómo se llama
+     el paso del medio y el nombre de la cosa que se pide. */
+  const SERVICIOS = {
+    "volquetes": {
+      cosa: "volquete",
+      acciones: [["pedido", "Pedido"], ["recambio", "Recambio"], ["retiro", "Retiro"]]
+    },
+    "banos quimicos": {
+      cosa: "baño químico",
+      acciones: [["pedido", "Pedido"], ["limpieza", "Limpieza"], ["retiro", "Retiro"]]
+    }
+  };
+
+  /** La configuración del servicio de ese rubro, o null si se pide por material. */
+  function servicioDe(rubro) {
+    return SERVICIOS[clave(rubro)] || null;
+  }
+
   function tipoFormulario(rubro) {
     const k = clave(rubro);
-    if (k === "volquetes") return "volquetes";
+    if (SERVICIOS[k]) return "servicio";
     if (k === "hormigones" || k === "hormigon") return "hormigones";
     return "materiales";
   }
 
   /** Muestra el formulario que corresponde al rubro elegido. */
   function aplicarFormularioDeRubro() {
-    const tipo = tipoFormulario($("pedido-rubro").value);
-    $("form-volquetes").classList.toggle("oculto", tipo !== "volquetes");
+    const rubro = $("pedido-rubro").value;
+    const tipo = tipoFormulario(rubro);
+    $("form-servicio").classList.toggle("oculto", tipo !== "servicio");
+    if (tipo === "servicio") pintarServicio(rubro);
     $("form-hormigones").classList.toggle("oculto", tipo !== "hormigones");
     $("bloque-materiales").classList.toggle("oculto", tipo !== "materiales");
     // Un volquete o un camión de hormigón siempre van a la obra: no tiene
@@ -1279,6 +1303,21 @@ window.PO = window.PO || {};
     $("bloque-entrega").classList.toggle("oculto", tipo !== "materiales");
     if (tipo !== "materiales") setEntregaPedido("obra");
     if (tipo === "materiales" && !$("items-editor").children.length) agregarFilaItem();
+  }
+
+  /** Dibuja los botones del servicio y deja elegido el primero. */
+  function pintarServicio(rubro) {
+    const s = servicioDe(rubro);
+    if (!s) return;
+    const cont = $("seg-servicio");
+    const actual = valorSegmentado("seg-servicio", null);
+    const sigueSirviendo = s.acciones.some(([v]) => v === actual);
+    cont.innerHTML = s.acciones.map(([v, t], i) =>
+      '<button type="button" class="seg-btn' +
+      ((sigueSirviendo ? v === actual : i === 0) ? " activo" : "") +
+      '" data-valor="' + v + '">' + esc(t) + "</button>").join("");
+    cont.querySelectorAll(".seg-btn").forEach((b) =>
+      b.addEventListener("click", () => { setSegmentado("seg-servicio", b.dataset.valor); autoguardar(); }));
   }
 
   function valorSegmentado(id, porDefecto) {
@@ -1297,13 +1336,15 @@ window.PO = window.PO || {};
   function leerItemsSegunRubro() {
     const tipo = tipoFormulario($("pedido-rubro").value);
 
-    if (tipo === "volquetes") {
-      const accion = valorSegmentado("seg-volquete", "pedido");
-      const cant = parseCant($("volquete-cantidad").value) || 1;
-      const etiqueta = { pedido: "Pedido de volquete", recambio: "Recambio de volquete",
-                         retiro: "Retiro de volquete" }[accion];
-      return { items: [{ descripcion: etiqueta, cantidad: cant, unidad: "un.", recibido: 0 }],
-               extra: { tipo: "volquetes", accion, cantidad: cant } };
+    if (tipo === "servicio") {
+      const s = servicioDe($("pedido-rubro").value);
+      const accion = valorSegmentado("seg-servicio", s.acciones[0][0]);
+      const cant = parseCant($("servicio-cantidad").value) || 1;
+      const rotulo = (s.acciones.find(([v]) => v === accion) || s.acciones[0])[1];
+      return {
+        items: [{ descripcion: rotulo + " de " + s.cosa, cantidad: cant, unidad: "un.", recibido: 0 }],
+        extra: { tipo: "servicio", accion, cantidad: cant }
+      };
     }
 
     if (tipo === "hormigones") {
@@ -1327,9 +1368,10 @@ window.PO = window.PO || {};
   /** Lo cargado en el formulario del rubro, sin validar (para el autoguardado). */
   function detalleRubroActual() {
     const tipo = tipoFormulario($("pedido-rubro").value);
-    if (tipo === "volquetes") {
-      return { tipo, accion: valorSegmentado("seg-volquete", "pedido"),
-               cantidad: parseCant($("volquete-cantidad").value) || 1 };
+    if (tipo === "servicio") {
+      const s = servicioDe($("pedido-rubro").value);
+      return { tipo, accion: valorSegmentado("seg-servicio", s.acciones[0][0]),
+               cantidad: parseCant($("servicio-cantidad").value) || 1 };
     }
     if (tipo === "hormigones") {
       const lugar = $("horm-lugar").value.trim();
@@ -1343,8 +1385,7 @@ window.PO = window.PO || {};
 
   /** Deja los formularios por rubro como recién abiertos. */
   function limpiarFormulariosDeRubro() {
-    setSegmentado("seg-volquete", "pedido");
-    $("volquete-cantidad").value = "1";
+    $("servicio-cantidad").value = "1";
     $("horm-metros").value = "";
     $("horm-tipo").value = "";
     setSegmentado("seg-bomba", "si");
@@ -1355,9 +1396,11 @@ window.PO = window.PO || {};
       (editar borrador, duplicar o recuperar el autoguardado). */
   function cargarDetalleRubro(d) {
     if (!d) return false;
-    if (d.tipo === "volquetes") {
-      setSegmentado("seg-volquete", d.accion || "pedido");
-      $("volquete-cantidad").value = d.cantidad || 1;
+    // "volquetes" es como se guardaba antes de que hubiera más de un servicio.
+    if (d.tipo === "servicio" || d.tipo === "volquetes") {
+      pintarServicio($("pedido-rubro").value);
+      if (d.accion) setSegmentado("seg-servicio", d.accion);
+      $("servicio-cantidad").value = d.cantidad || 1;
       return true;
     }
     if (d.tipo === "hormigones") {
@@ -1895,7 +1938,7 @@ window.PO = window.PO || {};
 
     /* Materiales — volquetes y hormigones no piden "materiales", así que el
        título del bloque acompaña al rubro. */
-    const tituloItems = { volquetes: "Pedido", hormigones: "Hormigón" }[tipoFormulario(p.rubro)]
+    const tituloItems = { servicio: "Pedido", hormigones: "Hormigón" }[tipoFormulario(p.rubro)]
       || "Materiales";
     html += '<div class="bloque"><h4>' + tituloItems + ' (' + pctRecibido(p) + '% recibido)</h4>' +
       (p.items || []).map((it) => {
@@ -2899,17 +2942,26 @@ window.PO = window.PO || {};
          elegido queda en este dispositivo, como el resto de las preferencias
          de pantalla. --- */
 
+  // Sin nada guardado el tema es CLARO, no "automático" (03-sep-2026): seguir al
+  // sistema operativo hacía que en un celular en oscuro la app abriera oscura sin
+  // que nadie lo eligiera. "auto" pasó a ser una opción que se guarda.
   function temaElegido() {
-    try { return localStorage.getItem("st-tema") || "auto"; } catch (e) { return "auto"; }
+    try { return localStorage.getItem("st-tema") || "claro"; } catch (e) { return "claro"; }
   }
 
   function aplicarTema(t) {
     if (t === "claro" || t === "oscuro") {
       document.documentElement.dataset.tema = t;
-      try { localStorage.setItem("st-tema", t); } catch (e) {}
+      // `obra_tema` es la clave puntual que lee el módulo Obra de Gestión (no
+      // `st-tema`): se escribe en espejo para que las 5 puertas queden en el
+      // mismo tema al elegirlo desde cualquiera de ellas.
+      try { localStorage.setItem("st-tema", t); localStorage.setItem("obra_tema", t); } catch (e) {}
     } else {
+      // "auto" se GUARDA: al ser claro el tema de fábrica, borrar la clave sería
+      // elegir claro, no automático. `obra_tema` sí se borra: el módulo Obra no
+      // tiene automático y sin clave se va a claro, que es lo correcto.
       delete document.documentElement.dataset.tema;
-      try { localStorage.removeItem("st-tema"); } catch (e) {}
+      try { localStorage.setItem("st-tema", "auto"); localStorage.removeItem("obra_tema"); } catch (e) {}
     }
     // La barra del navegador acompaña al fondo real de la app.
     const oscuro = t === "oscuro" ||
@@ -2920,6 +2972,23 @@ window.PO = window.PO || {};
 
   function renderTema() {
     setSegmentado("seg-tema", temaElegido());
+  }
+
+  /* Botón chico del topbar (visible en el home, sin entrar a Perfil) — mismo
+     mecanismo que el segmentado de Perfil, solo que cicla con un toque. */
+  const ICO_TEMA = { auto: "◐", claro: "☀", oscuro: "☾" };
+  const ROTULO_TEMA = { auto: "Automático", claro: "Claro", oscuro: "Oscuro" };
+  function pintarTemaTopbar() {
+    const b = $("btn-tema-topbar");
+    if (!b) return;
+    const t = temaElegido();
+    b.textContent = ICO_TEMA[t];
+    b.title = "Tema: " + ROTULO_TEMA[t] + " (tocar para cambiar)";
+  }
+  function cambiarTemaTopbar() {
+    const orden = ["auto", "claro", "oscuro"];
+    aplicarTema(orden[(orden.indexOf(temaElegido()) + 1) % orden.length]);
+    pintarTemaTopbar();
   }
 
   async function renderPush() {
@@ -3006,6 +3075,7 @@ window.PO = window.PO || {};
     renderBadgeCampana,
     prepararFormNuevo,
     codigoDeRubro,
+    leerItemsSegunRubro,
     abrirModalRecepcion,
     abrirModalProveedor,
     abrirModal,
