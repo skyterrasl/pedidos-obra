@@ -2449,11 +2449,16 @@ window.PO = window.PO || {};
 
   /* --- Obras --- */
 
+  /** La obra la maneja Gestión: nombre, estado y arquitectos vienen de allá y
+      se pisan en cada sincronización. Acá solo se le agrega la dirección. */
+  const obraDelErp = (o) => o && o.origen === "erp";
+
   function renderTabObras() {
     const cont = $("gestion-contenido");
     const directores = estado.usuarios.filter((x) => x.rol === "director" && x.activo !== false);
     const editando = estado.obraEditandoId
       ? estado.obras.find((o) => o.id === estado.obraEditandoId) : null;
+    const deGestion = obraDelErp(editando);
 
     const obrasExistentes = new Set(estado.obras.map((o) => clave(o.nombre)));
     const sugerencias = SUGERENCIAS_OBRAS.filter((s) => !obrasExistentes.has(clave(s.nombre)));
@@ -2478,25 +2483,42 @@ window.PO = window.PO || {};
           "</div></details>" +
           "</div>"
         : "") +
+      (deGestion
+        ? '<p class="nota-suave" style="margin-bottom:12px">Esta obra viene de Gestión: ' +
+          "el código, el estado y los arquitectos se cambian allá (Obra → Obras) y acá " +
+          "se actualizan solos. Lo que sí conviene cargar es la <strong>dirección</strong>: " +
+          "es la que se le manda al proveedor para decirle dónde entregar.</p>"
+        : "") +
       '<label class="campo"><span>Nombre (código de la planilla, ej: AMA-274)</span>' +
-      '<input class="input" id="obra-nombre" value="' + esc(editando ? editando.nombre : "") + '" /></label>' +
-      '<label class="campo"><span>Dirección</span>' +
+      '<input class="input" id="obra-nombre" value="' + esc(editando ? editando.nombre : "") + '"' +
+        (deGestion ? " disabled" : "") + " /></label>" +
+      '<label class="campo"><span>Dirección' + (deGestion ? " (para el proveedor)" : "") + "</span>" +
       '<input class="input" id="obra-direccion" value="' + esc(editando ? editando.direccion : "") + '" /></label>' +
       '<label class="campo"><span>Cliente</span>' +
-      '<input class="input" id="obra-cliente" value="' + esc(editando ? editando.cliente : "") + '" /></label>' +
+      '<input class="input" id="obra-cliente" value="' + esc(editando ? editando.cliente : "") + '"' +
+        (deGestion ? " disabled" : "") + " /></label>" +
       '<label class="campo"><span>Estado</span>' +
-      '<select class="input" id="obra-estado">' +
+      '<select class="input" id="obra-estado"' + (deGestion ? " disabled" : "") + ">" +
         Object.keys(ESTADOS_OBRA).map((s) =>
           '<option value="' + s + '"' + (editando && editando.estado === s ? " selected" : "") + ">" +
           ESTADOS_OBRA[s] + "</option>").join("") +
       "</select></label>" +
-      '<div class="campo"><span class="campo-titulo">Directores asignados</span>' +
-      (directores.length
-        ? directores.map((d) =>
-            '<label class="check-fila"><input type="checkbox" class="obra-director" value="' + esc(d.uid) + '"' +
-            (editando && (editando.directores || []).includes(d.uid) ? " checked" : "") + " />" +
-            "<span>" + esc(d.nombre) + "</span></label>").join("")
-        : '<p class="nota-suave">Todavía no hay usuarios con rol director. Se registran con el código de invitación de director.</p>') +
+      '<div class="campo"><span class="campo-titulo">' +
+        (deGestion ? "Arquitecto a cargo" : "Directores asignados") + "</span>" +
+      (deGestion
+        // Los asigna dirección en Obra → Obras: acá se informa quién es.
+        ? '<p class="nota-suave" style="margin:0">' +
+          ((editando.directores || []).map((uid) => {
+            const u = estado.usuarios.find((x) => x.uid === uid);
+            return u ? esc(u.nombre) : null;
+          }).filter(Boolean).join(", ") ||
+           "Sin arquitecto asignado. Se asigna en Gestión → Obra → Obras.") + "</p>"
+        : directores.length
+          ? directores.map((d) =>
+              '<label class="check-fila"><input type="checkbox" class="obra-director" value="' + esc(d.uid) + '"' +
+              (editando && (editando.directores || []).includes(d.uid) ? " checked" : "") + " />" +
+              "<span>" + esc(d.nombre) + "</span></label>").join("")
+          : '<p class="nota-suave">Todavía no hay arquitectos con acceso a Pedidos.</p>') +
       "</div>" +
       '<p class="form-error oculto" id="obra-error"></p>' +
       '<div class="acciones-doble">' +
@@ -2528,13 +2550,18 @@ window.PO = window.PO || {};
       mostrarError("obra-error", "");
       const nombre = $("obra-nombre").value.trim();
       if (!nombre) { mostrarError("obra-error", "Poné el nombre de la obra."); return; }
-      const datos = {
-        nombre,
-        direccion: $("obra-direccion").value.trim(),
-        cliente: $("obra-cliente").value.trim(),
-        estado: $("obra-estado").value,
-        directores: Array.from(cont.querySelectorAll(".obra-director:checked")).map((c) => c.value)
-      };
+      // En una obra de Gestión solo se guarda la dirección. Lo demás lo manda
+      // el ERP, y los arquitectos ni siquiera están en pantalla: guardarlos
+      // desde acá los dejaría vacíos hasta la próxima sincronización.
+      const datos = deGestion
+        ? { direccion: $("obra-direccion").value.trim() }
+        : {
+            nombre,
+            direccion: $("obra-direccion").value.trim(),
+            cliente: $("obra-cliente").value.trim(),
+            estado: $("obra-estado").value,
+            directores: Array.from(cont.querySelectorAll(".obra-director:checked")).map((c) => c.value)
+          };
       try {
         await PO.store.guardarObra(estado.obraEditandoId, datos);
         toast(estado.obraEditandoId ? "Obra actualizada." : "Obra " + nombre + " agregada.");
