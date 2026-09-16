@@ -1561,3 +1561,48 @@ select.input option { background: var(--bg-2); color: var(--text); }
   body[data-vista="detalle"] .contenido,
   body[data-vista="perfil"] .contenido { max-width: 820px; }
 }
+
+/* --- Selector de materiales: elegir varios de una --------------------------
+   Se marcan los que se van tocando y se agregan todos juntos: cargar cinco
+   materiales pasa de quince toques a siete. */
+.mat-item.elegido {
+  background: var(--acento-suave);
+  font-weight: 600;
+  padding-left: 40px;
+  position: relative;
+}
+.mat-item.elegido::before {
+  content: "✓";
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--dorado);
+  font-weight: 700;
+}
+
+/* La barra de abajo queda fija: el botón siempre a mano, aunque la lista sea
+   larga y el teclado esté abierto. */
+.mat-pie {
+  flex: none;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--borde);
+  background: var(--tarjeta);
+}
+.mat-agregar {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  background: var(--tarjeta);
+  color: var(--texto-suave);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mat-agregar.con-elegidos {
+  background: var(--cta-bg);
+  color: var(--cta-text);
+  border-color: var(--cta-bg);
+}

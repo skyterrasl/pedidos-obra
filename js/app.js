@@ -1552,20 +1552,52 @@ window.PO = window.PO || {};
           'placeholder="Buscar material…" value="' + esc(input.value) + '" />' +
         '<button type="button" class="mat-cerrar">Cerrar</button>' +
       "</div>" +
-      '<div class="mat-lista"></div>';
+      '<div class="mat-lista"></div>' +
+      '<div class="mat-pie"><button type="button" class="mat-agregar">Listo</button></div>';
     document.body.appendChild(panel);
     document.body.style.overflow = "hidden"; // que no scrollee el fondo
 
     const buscador = panel.querySelector(".mat-buscador");
     const lista = panel.querySelector(".mat-lista");
 
-    const elegir = (texto) => {
-      input.value = texto;
-      input.title = texto;   // en la fila se ve truncado; acá el nombre completo
+    const fila = input.closest(".item-fila");
+    const elegidos = [];   // en orden de selección
+
+    /** Cierra el panel agregando lo que se haya marcado. */
+    const confirmar = (extra) => {
+      const lista2 = elegidos.slice();
+      const escrito = String(extra || "").trim();
+      // Lo escrito a mano cuenta como uno más (material que no está en la lista)
+      if (escrito && !lista2.some((x) => clave(x) === clave(escrito))) lista2.push(escrito);
+
       cerrarPanelMateriales();
-      const cant = input.closest(".item-fila").querySelector(".it-cant");
-      if (cant) cant.focus();
-      autoguardar();
+      if (!lista2.length) return;
+
+      const r = agregarMateriales(lista2, fila);
+      if (r.sumados) {
+        toast(r.sumados === 1 ? "Ese material ya estaba: le sumé uno."
+                              : r.sumados + " ya estaban en la lista: les sumé uno.");
+      }
+      // Con uno solo se va directo a la cantidad; con varios ya quedaron en 1.
+      if (lista2.length === 1 && !r.sumados) {
+        const cant = fila && fila.querySelector(".it-cant");
+        if (cant) { cant.focus(); cant.select(); }
+      }
+    };
+
+    const actualizarBoton = () => {
+      const b = panel.querySelector(".mat-agregar");
+      b.textContent = elegidos.length
+        ? "Agregar " + elegidos.length + (elegidos.length === 1 ? " material" : " materiales")
+        : "Listo";
+      b.classList.toggle("con-elegidos", elegidos.length > 0);
+    };
+
+    const alternar = (texto, boton) => {
+      const i = elegidos.findIndex((x) => clave(x) === clave(texto));
+      if (i >= 0) elegidos.splice(i, 1); else elegidos.push(texto);
+      boton.classList.toggle("elegido", i < 0);
+      actualizarBoton();
     };
 
     const pintar = () => {
@@ -1582,28 +1614,74 @@ window.PO = window.PO || {};
         return;
       }
       lista.innerHTML = filtrados.slice(0, MAX_PANEL)
-        .map((m) => '<button type="button" class="mat-item">' + esc(m) + "</button>").join("") +
+        .map((m) => '<button type="button" class="mat-item' +
+          (elegidos.some((x) => clave(x) === clave(m)) ? " elegido" : "") + '">' +
+          esc(m) + "</button>").join("") +
         (filtrados.length > MAX_PANEL
           ? '<div class="mat-vacio">+' + (filtrados.length - MAX_PANEL) +
             " más — escribí para achicar la lista.</div>"
           : "");
       lista.querySelectorAll(".mat-item").forEach((b) =>
-        b.addEventListener("click", () => elegir(b.textContent))
+        b.addEventListener("click", () => alternar(b.textContent, b))
       );
     };
 
     buscador.addEventListener("input", pintar);
     // Enter: toma lo escrito tal cual (material que no está en la lista)
     buscador.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") { e.preventDefault(); elegir(buscador.value.trim()); }
+      if (e.key === "Enter") { e.preventDefault(); confirmar(buscador.value.trim()); }
     });
-    panel.querySelector(".mat-cerrar").addEventListener("click", () => {
-      const escrito = buscador.value.trim();
-      if (escrito) elegir(escrito); else cerrarPanelMateriales();
-    });
+    panel.querySelector(".mat-agregar").addEventListener("click", () => confirmar(
+      // Si escribió algo que no eligió de la lista, entra igual.
+      elegidos.length ? "" : buscador.value.trim()
+    ));
+    panel.querySelector(".mat-cerrar").addEventListener("click", cerrarPanelMateriales);
 
     pintar();
+    actualizarBoton();
     buscador.focus();
+  }
+
+  /** Suma materiales a la lista. Si alguno ya está, le suma 1 a su cantidad
+      en vez de repetir la fila. Devuelve cuántos se agregaron de nuevo. */
+  function agregarMateriales(nombres, filaDestino) {
+    let nuevos = 0, sumados = 0;
+
+    nombres.forEach((nombre) => {
+      const texto = String(nombre || "").trim();
+      if (!texto) return;
+
+      // ¿Ya está en la lista? Entonces se le suma uno.
+      const repetida = Array.from($("items-editor").children).find((f) =>
+        f !== filaDestino && clave(f.querySelector(".it-desc").value) === clave(texto));
+      if (repetida) {
+        const c = repetida.querySelector(".it-cant");
+        c.value = fmtCant((parseCant(c.value) || 0) + 1);
+        sumados++;
+        return;
+      }
+
+      // La primera va a la fila desde la que se abrió el selector, si está vacía.
+      if (filaDestino && !filaDestino.querySelector(".it-desc").value.trim()) {
+        const d = filaDestino.querySelector(".it-desc");
+        d.value = texto;
+        d.title = texto;
+        nuevos++;
+        return;
+      }
+      agregarFilaItem({ descripcion: texto, cantidad: 1, unidad: "un." });
+      nuevos++;
+    });
+
+    // Si el material se sumó a otra fila, la fila desde la que se abrió el
+    // selector quedó vacía: se saca, no tiene sentido dejarla.
+    if (filaDestino && !filaDestino.querySelector(".it-desc").value.trim() &&
+        $("items-editor").children.length > 1) {
+      filaDestino.remove();
+    }
+
+    autoguardar();
+    return { nuevos, sumados };
   }
 
   function agregarFilaItem(it) {
@@ -1621,7 +1699,7 @@ window.PO = window.PO || {};
         esc(it ? it.descripcion : "") + '" />' +
       '<input class="input it-cant" type="text" inputmode="decimal" ' +
         'aria-label="Cantidad" placeholder="Cant." value="' +
-        (it && it.cantidad ? esc(fmtCant(it.cantidad)) : "") + '" />' +
+        esc(fmtCant(it && it.cantidad ? it.cantidad : 1)) + '" />' +
       '<select class="input it-unidad" aria-label="Unidad">' +
         unidades.map((u) =>
           '<option value="' + esc(u) + '"' + (clave(u) === clave(unidadActual) ? " selected" : "") +
