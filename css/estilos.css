@@ -411,6 +411,14 @@ body.hay-offline .topbar { top: 32px; }
 
 .btn-bloque { display: block; width: 100%; margin-top: 6px; }
 .btn-chico { padding: 7px 12px; font-size: 13.5px; border-radius: 8px; }
+/* enlaces que se visten de botón (la vuelta al ERP) */
+a.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; line-height: 1.45; }
+a.btn-bloque { display: flex; }
+#btn-volver-erp { white-space: nowrap; gap: 6px; padding-top: 6px; padding-bottom: 6px; }
+/* en el celular no entra el texto sin partir el título: queda el ícono de inicio
+   (el de Perfil está escrito completo); en pantallas anchas, el texto */
+@media (max-width: 600px) { #btn-volver-erp span { display: none; } #btn-volver-erp { padding: 7px 9px; } }
+@media (min-width: 601px) { #btn-volver-erp svg { display: none; } }
 
 .acciones-doble { display: flex; gap: 10px; margin-top: 6px; }
 .acciones-doble .btn { flex: 1; }
@@ -815,21 +823,54 @@ select.input option { background: var(--bg-2); color: var(--text); }
 
 .items-editor { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
 
+/* Un material por renglón: descripción, cantidad, unidad y quitar, al costado.
+   La descripción se lleva el espacio que sobra y se trunca — se toca para
+   abrir el selector, que la muestra entera. */
 .item-fila {
   background: var(--tarjeta);
   border: 1px solid var(--borde);
   border-radius: 10px;
-  padding: 10px;
+  padding: 5px;
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-}
-.item-fila-abajo {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 54px 76px 34px;
+  gap: 6px;
   align-items: center;
 }
+/* Los campos de la fila van un poco más bajos que los del formulario: 44 px
+   es el mínimo táctil y acá hay cuatro renglones seguidos, así que cada píxel
+   de más se multiplica. El tamaño de letra NO baja de 16 px, o iOS hace zoom
+   al tocar el campo. */
+.item-fila .input {
+  min-width: 0;
+  min-height: 44px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.item-fila .it-desc {
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.item-fila .it-cant { text-align: center; padding-left: 4px; padding-right: 4px; }
+.item-fila .it-unidad { padding-left: 6px; padding-right: 18px; }
+
+/* La cruz: entra en su columna pero conserva alto táctil (el ancho lo compensa
+   el renglón entero, que mide 46 px). */
+.item-fila .item-quitar {
+  padding: 0;
+  min-width: 0;
+  width: 100%;
+  min-height: 42px;
+  font-size: 16px;
+  line-height: 1;
+  border-radius: 8px;
+}
+.item-fila .item-quitar:hover { background: var(--acento-suave); }
+
+/* En pantallas muy angostas la unidad se achica antes que la descripción. */
+@media (max-width: 359px) {
+  .item-fila { grid-template-columns: minmax(0, 1fr) 46px 64px 32px; }
+}
+
 /* Selector de materiales a PANTALLA COMPLETA. Inline no servía: entre el
    teclado del celular y la barra de navegación, la lista quedaba aplastada
    en dos renglones. Acá el buscador queda fijo arriba y la lista usa toda
@@ -1481,3 +1522,42 @@ select.input option { background: var(--bg-2); color: var(--text); }
 }
 @keyframes girar { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .sso-spinner { animation: none; } }
+
+/* ============================================================================
+   ESCRITORIO (≥ 901 px) — 15-sep-2026
+   La app nació para el celular: contenido de 560 px y barra de pestañas fija abajo.
+   En un monitor eso era una franja angosta con 900 px vacíos. Mismo patrón que las
+   otras puertas (Obra, SIC): la barra pasa a ser lateral, el contenido se ensancha y
+   el listado se arma en dos columnas. En el celular no cambia nada.
+   ============================================================================ */
+@media (min-width: 901px) {
+  .navbar {
+    top: 0; bottom: 0; right: auto; width: 224px;
+    flex-direction: column; justify-content: flex-start; gap: 2px;
+    padding: 84px 10px 16px;                      /* deja lugar a la topbar */
+    background: #1B2A3B; border-top: none; border-right: 1px solid rgba(255,255,255,.08);
+    z-index: 40;
+  }
+  .nav-item {
+    max-width: none; flex: none; flex-direction: row; justify-content: flex-start;
+    gap: 11px; min-height: 40px; padding: 8px 12px; border-radius: 9px;
+    color: #C3CDD8; font-size: 13px; font-weight: 500;
+  }
+  .nav-item:hover { background: rgba(255,255,255,.06); color: #fff; }
+  .nav-item.activo { background: rgba(255,255,255,.1); color: #fff; font-weight: 600; }
+  .nav-item.activo svg { color: #D4B45E; }
+  .nav-item svg { width: 18px; height: 18px; }
+
+  .contenido { max-width: 1180px; margin: 0 0 0 224px; padding: 22px 26px 60px; }
+  .btn-flotante { bottom: 24px; right: 28px; }
+
+  /* el listado de pedidos, en dos columnas */
+  body[data-vista="listado"] .lista-pedidos {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start;
+  }
+  body[data-vista="listado"] .pedido-card { margin: 0; }
+  /* formularios y detalle: una columna, que a 1180 px se estiran */
+  body[data-vista="nuevo"] .contenido,
+  body[data-vista="detalle"] .contenido,
+  body[data-vista="perfil"] .contenido { max-width: 820px; }
+}

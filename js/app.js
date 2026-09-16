@@ -337,6 +337,9 @@ window.PO = window.PO || {};
       estado.edicionBorradorId = null;
     }
     estado.vista = vista;
+    // La vista activa, marcada en el body: en escritorio el listado se arma en dos
+    // columnas y el resto no, y eso lo decide el CSS por esta marca.
+    document.body.dataset.vista = vista;
     ["dashboard", "listado", "nuevo", "detalle", "gestion", "materiales", "perfil"].forEach((v) =>
       $("vista-" + v).classList.toggle("oculto", v !== vista)
     );
@@ -437,6 +440,23 @@ window.PO = window.PO || {};
     }
   }
 
+  /* --- La vuelta al ERP ----------------------------------------------------
+         Pedidos es una puerta más de Gestión: servida desde /pedidos/ tiene que
+         tener siempre el camino de vuelta, como CRM, SIC y Obra. Se muestra a
+         quien puede abrir el ERP principal (el resto tiene su propia puerta y
+         el ERP lo mandaría ahí) y también sin sesión: es la salida si no se
+         quiere entrar. Fuera del ERP (GitHub Pages) no hay adónde volver. --- */
+  const ABREN_ERP = ["admin", "direccion", "rrhh", "invitado"];
+  function pintarVolverErp() {
+    const dentro = !!(PO.sso && PO.sso.dentroDelErp());
+    const u = estado.usuario;
+    const puede = dentro && (!u || ABREN_ERP.includes(u.rolErp || u.rol));
+    ["btn-volver-erp", "perfil-volver-erp", "auth-volver-erp"].forEach((id) => {
+      const el = $(id);
+      if (el) el.classList.toggle("oculto", !puede);
+    });
+  }
+
   function iniciarSesion(perfil) {
     if (PO.sso) PO.sso.limpiarSalida();   // entró: la salida anterior ya no cuenta
     estado.usuario = perfil;
@@ -444,6 +464,7 @@ window.PO = window.PO || {};
     estado.dash = { obra: "todas", rubro: "todos" };
 
     $("nav-gestion").classList.toggle("oculto", !esAdmin());
+    pintarVolverErp();
 
     limpiarSubs();
     estado.subs.obras = PO.store.subObras((obras) => { estado.obras = obras; refrescarVista(); });
@@ -494,6 +515,7 @@ window.PO = window.PO || {};
   function limpiarSesion() {
     limpiarSubs();
     estado.usuario = null;
+    pintarVolverErp();
     estado.usuarios = [];
     estado.obras = [];
     estado.rubros = [];
@@ -506,6 +528,7 @@ window.PO = window.PO || {};
   /* ------------------------------------------------------------- eventos -- */
 
   function conectarEventos() {
+    pintarVolverErp();   // antes de saber quién es: en el login ya se ve
     // Auth: una sola puerta, con el usuario y la clave del ERP.
     $("form-login").addEventListener("submit", onLogin);
     $("btn-salir").addEventListener("click", async () => {
@@ -1538,6 +1561,7 @@ window.PO = window.PO || {};
 
     const elegir = (texto) => {
       input.value = texto;
+      input.title = texto;   // en la fila se ve truncado; acá el nombre completo
       cerrarPanelMateriales();
       const cant = input.closest(".item-fila").querySelector(".it-cant");
       if (cant) cant.focus();
@@ -1585,16 +1609,26 @@ window.PO = window.PO || {};
   function agregarFilaItem(it) {
     const div = document.createElement("div");
     div.className = "item-fila";
+    const unidadActual = (it && it.unidad) || "un.";
+    const unidades = (window.APP_CONFIG.UNIDADES || ["un."]).slice();
+    // Si un pedido viejo trae una unidad que ya no está en la lista, se suma
+    // para no perderla al editarlo.
+    if (!unidades.some((u) => clave(u) === clave(unidadActual))) unidades.unshift(unidadActual);
+
     div.innerHTML =
       '<input class="input it-desc" type="text" autocomplete="off" ' +
-        'placeholder="Tocá para ver los materiales" value="' + esc(it ? it.descripcion : "") + '" />' +
-      '<div class="item-fila-abajo">' +
-        '<input class="input it-cant" type="text" inputmode="decimal" placeholder="Cantidad" value="' +
-          (it && it.cantidad ? esc(fmtCant(it.cantidad)) : "") + '" />' +
-        '<input class="input it-unidad" type="text" list="lista-unidades" placeholder="Unidad" value="' +
-          esc(it ? it.unidad : "un.") + '" />' +
-        '<button type="button" class="item-quitar">Quitar</button>' +
-      "</div>";
+        'placeholder="Tocá para elegir…" title="' + esc(it ? it.descripcion : "") + '" value="' +
+        esc(it ? it.descripcion : "") + '" />' +
+      '<input class="input it-cant" type="text" inputmode="decimal" ' +
+        'aria-label="Cantidad" placeholder="Cant." value="' +
+        (it && it.cantidad ? esc(fmtCant(it.cantidad)) : "") + '" />' +
+      '<select class="input it-unidad" aria-label="Unidad">' +
+        unidades.map((u) =>
+          '<option value="' + esc(u) + '"' + (clave(u) === clave(unidadActual) ? " selected" : "") +
+          ">" + esc(u) + "</option>").join("") +
+      "</select>" +
+      '<button type="button" class="item-quitar" aria-label="Quitar este material" ' +
+        'title="Quitar">✕</button>';
     div.querySelector(".item-quitar").addEventListener("click", () => {
       if ($("items-editor").children.length > 1) { div.remove(); autoguardar(); }
       else toast("El pedido necesita al menos un material.");
@@ -3103,6 +3137,7 @@ window.PO = window.PO || {};
     prepararFormNuevo,
     codigoDeRubro,
     leerItemsSegunRubro,
+    agregarFilaItem,
     abrirModalRecepcion,
     abrirModalProveedor,
     abrirModal,

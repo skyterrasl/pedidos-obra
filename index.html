@@ -97,6 +97,7 @@
         <p class="form-error oculto" id="login-error"></p>
         <button type="submit" class="btn btn-primario btn-bloque" id="btn-login">Ingresar</button>
         <p class="auth-alternativa" id="auth-como-entrar"></p>
+        <p class="auth-alternativa oculto" id="auth-volver-erp"><a href="/">← Volver a Gestión</a></p>
       </form>
     </div>
   </section>
@@ -119,6 +120,13 @@
           </svg>
           <span class="campana-badge oculto" id="campana-badge">0</span>
         </button>
+        <!-- La vuelta al ERP: solo se ve servido desde gestion.skyterra.com.ar/pedidos/
+             y para quien puede abrir el ERP principal (lo decide app.js). -->
+        <a class="btn btn-ghost btn-chico oculto" id="btn-volver-erp" href="/" title="Volver a Sky Terra Gestión" aria-label="Volver a Sky Terra Gestión">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/><path d="M10 20v-6h4v6"/></svg>
+          <span>← Gestión</span>
+        </a>
         <button class="btn btn-ghost btn-chico" id="btn-salir">Salir</button>
       </div>
     </header>
@@ -355,6 +363,7 @@
         </div>
         <p class="nota-suave perfil-rol" id="perfil-rol"></p>
         <p class="nota-suave" id="perfil-version"></p>
+        <a class="btn btn-ghost btn-bloque oculto" id="perfil-volver-erp" href="/" style="margin-top:18px">← Volver a Sky Terra Gestión</a>
       </section>
 
     </main>
