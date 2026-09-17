@@ -210,7 +210,6 @@ window.PO = window.PO || {};
     filtros: { estado: "todos", obra: "todas", rubro: "todos", desde: "", hasta: "", q: "" },
     dash: { obra: "todas", rubro: "todos", rendimiento: false },
     edicionBorradorId: null, // si estamos editando un borrador existente
-    duplicarDe: null,        // precarga para "Duplicar pedido"
     fotosRecepcion: [],      // [{base64, tipo}] del modal de recepción
     obraEditandoId: null,
     proveedorEditandoId: null,
@@ -304,6 +303,32 @@ window.PO = window.PO || {};
     return !!(p.proveedor && p.proveedor.fechaEstimada &&
       p.proveedor.fechaEstimada < hoyISO() &&
       ["pedido_proveedor", "entrega_parcial"].includes(p.estado));
+  }
+
+  /* Días que el director espera antes de poder reclamar. Tres es lo que en
+     el chat del grupo se toleraba sin volver a preguntar. */
+  const DIAS_PARA_RECLAMAR = 3;
+
+  /** Cuándo salió el pedido de la obra: la fecha en que se envió, o la de
+      creación si es un pedido viejo sin ese paso en el historial. */
+  function fechaDeEnvio(p) {
+    const env = (p.historial || []).find((h) => h.accion === "enviado");
+    return (env && env.ts) || p.creado || null;
+  }
+
+  function diasDesdeElEnvio(p) {
+    const iso = tsAFechaISO(fechaDeEnvio(p));
+    return iso ? diasDesde(iso) : 0;
+  }
+
+  /** Quién puede reclamar este pedido, y desde cuándo.
+      · administración: en cuanto está en el proveedor (su reclamo va afuera)
+      · el director: a los 3 días del envío, en cualquier estado abierto */
+  function puedeReclamar(p) {
+    if (!ABIERTOS.includes(p.estado)) return false;
+    if (esAdmin()) return ["pedido_proveedor", "entrega_parcial"].includes(p.estado);
+    const mio = p.solicitanteUid === estado.usuario.uid || directorDeObra(p);
+    return mio && diasDesdeElEnvio(p) >= DIAS_PARA_RECLAMAR;
   }
 
   /** Ya comprado y todavía dentro de la fecha prometida. */
@@ -1246,17 +1271,6 @@ window.PO = window.PO || {};
         (editando.items || []).forEach((it) => agregarFilaItem(it));
       }
       $("pedido-autosave").classList.add("oculto");
-    } else if (estado.duplicarDe) {
-      const d = estado.duplicarDe;
-      estado.duplicarDe = null;
-      $("pedido-obra").value = d.obraId || "";
-      $("pedido-obra-buscar").value = d.obraNombre || "";
-      $("pedido-rubro").value = d.rubro || "";
-      if (!cargarDetalleRubro(d.detalleRubro)) {
-        (d.items || []).forEach((it) => agregarFilaItem(it));
-      }
-      $("pedido-autosave").classList.remove("oculto");
-      toast("Pedido duplicado: revisá cantidades y fecha, y envialo.");
     } else {
       restaurarAutosave();
       $("pedido-autosave").classList.remove("oculto");
@@ -1416,7 +1430,7 @@ window.PO = window.PO || {};
   }
 
   /** Reconstruye el formulario del rubro con lo que ya se había cargado
-      (editar borrador, duplicar o recuperar el autoguardado). */
+      (editar un borrador o recuperar el autoguardado). */
   function cargarDetalleRubro(d) {
     if (!d) return false;
     // "volquetes" es como se guardaba antes de que hubiera más de un servicio.
@@ -2126,10 +2140,13 @@ window.PO = window.PO || {};
     }
     if ((soyAdmin || soyDirectorObra) && ["pedido_proveedor", "entrega_parcial"].includes(p.estado)) {
       botones.push('<button type="button" class="btn btn-primario" id="btn-recepcion">Registrar recepción</button>');
-      botones.push('<button type="button" class="btn btn-ghost" id="btn-reclamar" style="color:var(--alerta)">Reclamar</button>');
     }
-    if (!esControl() && p.estado !== "borrador") {
-      botones.push('<button type="button" class="btn btn-ghost" id="btn-duplicar">Duplicar pedido</button>');
+    if (puedeReclamar(p)) {
+      const dias = diasDesdeElEnvio(p);
+      botones.push('<button type="button" class="btn btn-ghost" id="btn-reclamar" ' +
+        'style="color:var(--alerta)">Reclamar' +
+        (dias >= DIAS_PARA_RECLAMAR && !esAdmin() ? " (hace " + dias + " días)" : "") +
+        "</button>");
     }
     if ((soyAdmin || soySolicitante) && abierto) {
       botones.push('<button type="button" class="btn btn-ghost" id="btn-cancelar-pedido" style="color:var(--peligro)">Cancelar pedido</button>');
@@ -2170,15 +2187,6 @@ window.PO = window.PO || {};
         toast("No se pudo reclamar: " + (err.message || err));
         e.target.disabled = false;
       }
-    });
-    on("btn-duplicar", () => {
-      estado.duplicarDe = {
-        obraId: p.obraId,
-        rubro: p.rubro,
-        items: (p.items || []).map((it) => ({ descripcion: it.descripcion, cantidad: it.cantidad, unidad: it.unidad }))
-      };
-      estado.edicionBorradorId = null;
-      ir("nuevo");
     });
     on("btn-cancelar-pedido", () => {
       $("cancelar-nota").value = "";
@@ -3216,6 +3224,7 @@ window.PO = window.PO || {};
     codigoDeRubro,
     leerItemsSegunRubro,
     agregarFilaItem,
+    diasDesdeElEnvio,
     abrirModalRecepcion,
     abrirModalProveedor,
     abrirModal,
