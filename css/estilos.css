@@ -1763,3 +1763,58 @@ select.input option { background: var(--bg-2); color: var(--text); }
   line-height: 1.45;
   color: var(--text-3);
 }
+
+/* ===========================================================================
+   LO QUE EL PROVEEDOR NO TIENE
+   Un faltante dejaba el pedido abierto para siempre. Ahora se marca, se ve
+   en la lista de materiales y el pedido puede cerrarse con lo que llegó.
+   =========================================================================== */
+
+.falta-lista {
+  max-height: 46vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.falta-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  min-height: 48px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+.falta-item:last-child { border-bottom: none; }
+.falta-item input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  accent-color: var(--acento);
+}
+.falta-desc {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--text);
+}
+.falta-cant {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+/* En la lista de materiales del detalle, el faltante se explica solo. */
+.item-linea.item-falta { opacity: 0.92; }
+.falta-nota {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--warn);
+}

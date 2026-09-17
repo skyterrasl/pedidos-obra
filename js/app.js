@@ -120,6 +120,7 @@ window.PO = window.PO || {};
     recepcion:        "Recepción registrada",
     cancelado:        "Pedido cancelado",
     reclamo:          "Reclamo enviado",
+    falta:            "El proveedor no lo tenía",
     recibido:         "Recibido por administración" // histórico: el paso se eliminó
   };
 
@@ -324,8 +325,19 @@ window.PO = window.PO || {};
   /** Quién puede reclamar este pedido, y desde cuándo.
       · administración: en cuanto está en el proveedor (su reclamo va afuera)
       · el director: a los 3 días del envío, en cualquier estado abierto */
+  /** Lo que falta, ¿ya está avisado y con fecha por venir? Entonces no hay
+      nada que reclamar todavía: el proveedor ya dijo cuándo llega. */
+  function faltaEstaAvisada(p) {
+    const pendientes = itemsVivos(p).filter(pendienteDeRecibir);
+    if (!pendientes.length) return false;
+    const hoy = hoyISO();
+    return pendientes.every((it) =>
+      it.falta && it.falta.motivo === "espera" && it.falta.fecha && it.falta.fecha >= hoy);
+  }
+
   function puedeReclamar(p) {
     if (!ABIERTOS.includes(p.estado)) return false;
+    if (faltaEstaAvisada(p)) return false;
     if (esAdmin()) return ["pedido_proveedor", "entrega_parcial"].includes(p.estado);
     const mio = p.solicitanteUid === estado.usuario.uid || directorDeObra(p);
     return mio && diasDesdeElEnvio(p) >= DIAS_PARA_RECLAMAR;
@@ -336,9 +348,40 @@ window.PO = window.PO || {};
     return ["pedido_proveedor", "entrega_parcial"].includes(p.estado) && !esAtrasado(p);
   }
 
+  /* Motivos por los que un material no llega con el resto del pedido. */
+  const FALTA = {
+    espera: "El proveedor no lo tiene todavía",
+    otro_proveedor: "Se pide en otro lado"
+  };
+
+  /** Un material movido a otro proveedor ya no es de este pedido: no se
+      espera, no se reclama y no traba el cierre. */
+  function movidoAOtro(it) {
+    return !!(it.falta && it.falta.motivo === "otro_proveedor");
+  }
+
+  /** ¿Todavía se espera que llegue con este pedido? */
+  function pendienteDeRecibir(it) {
+    if (movidoAOtro(it)) return false;
+    return Number(it.recibido || 0) < Number(it.cantidad || 0);
+  }
+
+  /** Lo que queda vivo en el pedido: lo que no se fue a otro proveedor. */
+  function itemsVivos(p) {
+    return (p.items || []).filter((it) => !movidoAOtro(it));
+  }
+
+  /** Un pedido está completo cuando llegó todo lo que seguía siendo suyo.
+      Antes exigía que llegara TODO, y un faltante lo dejaba abierto para
+      siempre. */
+  function recepcionCompleta(items) {
+    const vivos = (items || []).filter((it) => !movidoAOtro(it));
+    return vivos.length > 0 && !vivos.some(pendienteDeRecibir);
+  }
+
   function pctRecibido(p) {
     let total = 0, rec = 0;
-    (p.items || []).forEach((it) => {
+    itemsVivos(p).forEach((it) => {
       total += Number(it.cantidad) || 0;
       rec += Math.min(Number(it.recibido) || 0, Number(it.cantidad) || 0);
     });
@@ -599,6 +642,15 @@ window.PO = window.PO || {};
     $("nuevo-volver").addEventListener("click", () => ir(estado.edicionBorradorId ? "detalle" : "listado"));
     $("btn-agregar-item").addEventListener("click", () => { agregarFilaItem(); autoguardar(); });
     $("btn-pegar-lista").addEventListener("click", abrirPegarLista);
+
+    // Modal de faltantes: el campo de fecha sólo aparece si se espera.
+    $("seg-falta").querySelectorAll(".seg-btn").forEach((b) =>
+      b.addEventListener("click", () => {
+        setSegmentado("seg-falta", b.dataset.valor);
+        sincronizarFalta();
+      }));
+    $("falta-cancelar").addEventListener("click", () => cerrarModal("modal-falta"));
+    $("falta-confirmar").addEventListener("click", guardarFaltantes);
     $("form-pedido").addEventListener("submit", (e) => { e.preventDefault(); guardarPedido("enviado"); });
     $("btn-guardar-borrador").addEventListener("click", () => guardarPedido("borrador"));
     $("form-pedido").addEventListener("input", autoguardar);
@@ -1700,6 +1752,156 @@ window.PO = window.PO || {};
   }
 
 
+
+  /* --- Lo que el proveedor no tiene --------------------------------------
+     El corralón avisa al cotizar, o aparece al descargar el camión. En los
+     dos casos se marca desde el detalle del pedido. --- */
+
+  /** Cómo se lee un faltante en la lista de materiales. */
+  function textoFalta(f) {
+    if (!f) return "";
+    if (f.motivo === "otro_proveedor") {
+      return "no lo tenía · se pide en otro lado" +
+        (f.pedidoNumero ? " (" + f.pedidoNumero + ")" : "");
+    }
+    return "no lo tiene" + (f.fecha ? " · llega el " + fmtFecha(f.fecha) : " todavía");
+  }
+
+  function sincronizarFalta() {
+    const esEspera = valorSegmentado("seg-falta", "espera") === "espera";
+    $("falta-campo-fecha").classList.toggle("oculto", !esEspera);
+    $("falta-ayuda-otro").classList.toggle("oculto", esEspera);
+  }
+
+  function abrirFaltantes(p) {
+    const pendientes = (p.items || [])
+      .map((it, i) => ({ it: it, i: i }))
+      .filter((x) => pendienteDeRecibir(x.it));
+    if (!pendientes.length) { toast("No queda nada pendiente en este pedido."); return; }
+
+    // Los ya marcados siguen en la lista —el proveedor puede avisar después
+    // que tampoco lo va a tener— pero se ve que ya tienen destino.
+    $("falta-lista").innerHTML = pendientes.map((x) =>
+      '<label class="falta-item">' +
+        '<input type="checkbox" data-i="' + x.i + '" />' +
+        '<span class="falta-desc">' + esc(x.it.descripcion) +
+          '<span class="falta-cant">faltan ' +
+          esc(fmtCant(Number(x.it.cantidad || 0) - Number(x.it.recibido || 0))) + " " +
+          esc(x.it.unidad) +
+          (x.it.falta ? " · ya marcado: " + esc(textoFalta(x.it.falta)) : "") +
+          "</span>" +
+        "</span>" +
+      "</label>").join("");
+
+    setSegmentado("seg-falta", "espera");
+    $("falta-fecha").value = "";
+    $("falta-fecha").min = hoyISO();
+    $("falta-error").classList.add("oculto");
+    sincronizarFalta();
+    abrirModal("modal-falta");
+  }
+
+  async function guardarFaltantes() {
+    const p = pedidoAbierto();
+    if (!p) return;
+    const u = estado.usuario;
+    const marcados = Array.from(
+      $("falta-lista").querySelectorAll("input[type=checkbox]"))
+      .filter((c) => c.checked)
+      .map((c) => Number(c.dataset.i));
+    if (!marcados.length) {
+      mostrarError("falta-error", "Marcá al menos un material.");
+      return;
+    }
+    const motivo = valorSegmentado("seg-falta", "espera");
+    const fecha = $("falta-fecha").value;
+    if (motivo === "espera" && !fecha) {
+      mostrarError("falta-error", "Poné para cuándo lo prometió.");
+      return;
+    }
+
+    $("falta-confirmar").disabled = true;
+    try {
+      const items = (p.items || []).map((it) => ({ ...it }));
+      const ahora = PO.fb.tsAhora();
+      let nuevo = null;
+
+      // Lo que se compra en otro lado sale en un pedido propio: si no, se
+      // pierde y reaparece el día que en obra lo necesitan.
+      if (motivo === "otro_proveedor") {
+        const suyos = marcados.map((i) => ({
+          descripcion: items[i].descripcion,
+          cantidad: Math.max(0, Number(items[i].cantidad || 0) - Number(items[i].recibido || 0)),
+          unidad: items[i].unidad,
+          recibido: 0
+        }));
+        const datos = {
+          obraId: p.obraId,
+          obraNombre: p.obraNombre,
+          rubro: p.rubro,
+          solicitanteUid: p.solicitanteUid || u.uid,
+          solicitanteNombre: p.solicitanteNombre || u.nombre,
+          creado: PO.fb.tsServidor(),
+          entrega: p.entrega || { tipo: "obra" },
+          detalleRubro: null,
+          estado: "enviado",
+          observaciones: "Lo que no tenía el proveedor del pedido " +
+            (p.numero || "anterior") + ".",
+          items: suyos,
+          proveedor: null,
+          vieneDe: { id: p.id, numero: p.numero || null },
+          historial: [
+            { accion: "creado", usuarioNombre: u.nombre, ts: ahora,
+              nota: "Armado con lo que no tenía el proveedor de " +
+                (p.numero || "el pedido anterior") + "." },
+            { accion: "enviado", usuarioNombre: u.nombre, ts: ahora, nota: "" }
+          ]
+        };
+        nuevo = await PO.store.crearPedido(datos, codigoDeRubro(p.rubro));
+      }
+
+      marcados.forEach((i) => {
+        items[i].falta = {
+          motivo: motivo,
+          fecha: motivo === "espera" ? fecha : null,
+          pedidoId: nuevo ? nuevo.id : null,
+          pedidoNumero: nuevo ? nuevo.numero : null,
+          usuarioNombre: u.nombre,
+          ts: ahora
+        };
+      });
+
+      const nombres = marcados.map((i) => "· " + items[i].descripcion).join("\n");
+      const nota = (motivo === "espera"
+        ? "El proveedor no los tiene; los prometió para el " + fmtFecha(fecha) + ":\n"
+        : "El proveedor no los tiene; se piden en otro lado" +
+          (nuevo && nuevo.numero ? " (" + nuevo.numero + ")" : "") + ":\n") + nombres;
+
+      const cambios = {
+        items: items,
+        historial: (p.historial || []).concat([
+          { accion: "falta", usuarioNombre: u.nombre, ts: ahora, nota: nota }
+        ])
+      };
+      // Sacar de la cuenta lo que se fue a otro proveedor puede dejar el
+      // pedido completo: entonces se cierra acá mismo.
+      if (recepcionCompleta(items)) cambios.estado = "entregado";
+
+      await PO.store.actualizarPedido(p.id, cambios);
+      cerrarModal("modal-falta");
+      toast(nuevo && nuevo.numero
+        ? "Lo que falta quedó en el pedido " + nuevo.numero + "."
+        : (cambios.estado === "entregado"
+            ? "Marcado. El pedido quedó entregado con lo que llegó."
+            : "Marcado. El director ya lo ve en el pedido."));
+    } catch (e) {
+      mostrarError("falta-error", "No se pudo guardar: " + (e.message || e));
+    } finally {
+      const b = $("falta-confirmar");
+      if (b) b.disabled = false;
+    }
+  }
+
   /* --- Pegar o dictar la lista ------------------------------------------
      El director rara vez arma la lista: se la pasa el plomero o el capataz,
      por WhatsApp o en un papel. Antes la transcribía renglón por renglón;
@@ -2254,10 +2456,19 @@ window.PO = window.PO || {};
        título del bloque acompaña al rubro. */
     const tituloItems = { servicio: "Pedido", hormigones: "Hormigón" }[tipoFormulario(p.rubro)]
       || "Materiales";
-    html += '<div class="bloque"><h4>' + tituloItems + ' (' + pctRecibido(p) + '% recibido)</h4>' +
+    // El porcentaje se mide sobre lo que sigue siendo de este pedido, así que
+    // hay que aclarar cuántos se fueron: si no, "100% recibido" arriba de un
+    // renglón en 0/3 parece un error.
+    const enOtroPedido = (p.items || []).filter(movidoAOtro).length;
+    html += '<div class="bloque"><h4>' + tituloItems + ' (' + pctRecibido(p) + '% recibido' +
+      (enOtroPedido ? " · " + enOtroPedido + " en otro pedido" : "") + ")</h4>" +
       (p.items || []).map((it) => {
         const completo = Number(it.recibido || 0) >= Number(it.cantidad);
-        return '<div class="item-linea"><span>' + esc(it.descripcion) + "</span>" +
+        const f = it.falta;
+        return '<div class="item-linea' + (f ? " item-falta" : "") + '">' +
+          "<span>" + esc(it.descripcion) +
+          (f ? '<span class="falta-nota">' + esc(textoFalta(f)) + "</span>" : "") +
+          "</span>" +
           '<span class="item-recibido' + (completo ? " completo" : "") + '">' +
           fmtCant(it.recibido || 0) + " / " + fmtCant(it.cantidad) + " " + esc(it.unidad) +
           "</span></div>";
@@ -2329,6 +2540,13 @@ window.PO = window.PO || {};
     if ((soyAdmin || soyDirectorObra) && ["pedido_proveedor", "entrega_parcial"].includes(p.estado)) {
       botones.push('<button type="button" class="btn btn-primario" id="btn-recepcion">Registrar recepción</button>');
     }
+    // El proveedor avisa al cotizar o aparece al descargar el camión: en los
+    // dos momentos se marca desde acá.
+    if (soyAdmin && ["pedido_proveedor", "entrega_parcial"].includes(p.estado) &&
+        itemsVivos(p).some(pendienteDeRecibir)) {
+      botones.push('<button type="button" class="btn btn-ghost" id="btn-falta">' +
+        "Marcar lo que no tiene</button>");
+    }
     if (puedeReclamar(p)) {
       const dias = diasDesdeElEnvio(p);
       botones.push('<button type="button" class="btn btn-ghost" id="btn-reclamar" ' +
@@ -2366,6 +2584,7 @@ window.PO = window.PO || {};
     });
     on("btn-pedir-proveedor", abrirModalProveedor);
     on("btn-recepcion", abrirModalRecepcion);
+    on("btn-falta", () => abrirFaltantes(p));
     on("btn-reclamar", async (e) => {
       e.target.disabled = true;
       try {
@@ -2646,7 +2865,7 @@ window.PO = window.PO || {};
       return;
     }
 
-    const completo = items.every((it) => Number(it.recibido || 0) >= Number(it.cantidad));
+    const completo = recepcionCompleta(items);
     const nuevoEstado = completo ? "entregado" : "entrega_parcial";
     const nota = (completo ? "Recepción completa.\n" : "Recepción parcial.\n") +
       lineasNota.join("\n") +
@@ -3414,6 +3633,11 @@ window.PO = window.PO || {};
     agregarFilaItem,
     abrirPegarLista,
     leerLoPegado,
+    abrirFaltantes,
+    guardarFaltantes,
+    recepcionCompleta,
+    puedeReclamar,
+    pendienteDeRecibir,
     diasDesdeElEnvio,
     abrirModalRecepcion,
     abrirModalProveedor,

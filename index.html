@@ -468,6 +468,37 @@
     </div>
   </div>
 
+  <!-- ================= MODAL: LO QUE EL PROVEEDOR NO TIENE ================
+       Antes un faltante dejaba el pedido abierto para siempre: no se podía
+       cerrar con lo que sí llegó, y el director reclamaba algo que nunca iba
+       a venir. -->
+  <div class="modal oculto" id="modal-falta">
+    <div class="modal-caja">
+      <h3>Lo que el proveedor no tiene</h3>
+      <p class="nota-suave">Marcá lo que no te va a traer y decidí qué hacés con
+        eso. El pedido se va a poder cerrar con lo que sí llegue.</p>
+      <div class="falta-lista" id="falta-lista"><!-- por JS --></div>
+      <div class="campo">
+        <span class="campo-titulo">¿Qué hacemos?</span>
+        <div class="segmentado" id="seg-falta">
+          <button type="button" class="seg-btn activo" data-valor="espera">Lo esperamos</button>
+          <button type="button" class="seg-btn" data-valor="otro_proveedor">Lo pido en otro lado</button>
+        </div>
+      </div>
+      <label class="campo" id="falta-campo-fecha">
+        <span>¿Para cuándo lo prometió?</span>
+        <input class="input" type="date" id="falta-fecha" />
+      </label>
+      <p class="nota-suave oculto" id="falta-ayuda-otro">Te dejo armado un pedido
+        nuevo con esos materiales, para la misma obra y rubro, enlazado a este.</p>
+      <p class="form-error oculto" id="falta-error"></p>
+      <div class="modal-acciones">
+        <button class="btn btn-ghost" id="falta-cancelar">Cancelar</button>
+        <button class="btn btn-primario" id="falta-confirmar">Guardar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ========================= MODAL: CANCELAR PEDIDO ====================== -->
   <div class="modal oculto" id="modal-cancelar">
     <div class="modal-caja">
