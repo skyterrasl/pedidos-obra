@@ -250,6 +250,11 @@
 
           <div class="campo" id="bloque-materiales">
             <span class="campo-titulo">Materiales</span>
+            <!-- La lista casi siempre llega por WhatsApp del plomero o del
+                 capataz: pegarla entera es mucho más rápido que transcribirla. -->
+            <button type="button" class="btn btn-bloque btn-pegar" id="btn-pegar-lista">
+              Pegar o dictar una lista
+            </button>
             <div class="items-editor" id="items-editor"><!-- por JS --></div>
             <button type="button" class="btn btn-ghost btn-bloque" id="btn-agregar-item">+ Agregar material</button>
           </div>
@@ -521,6 +526,7 @@
   <script src="js/export.js"></script>
   <script src="js/seed.js"></script>
   <script src="js/materiales.js"></script>
+  <script src="js/lector-lista.js"></script>
   <script src="js/push.js"></script>
   <script src="js/sso-erp.js"></script>
   <script src="js/app.js"></script>

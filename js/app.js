@@ -598,6 +598,7 @@ window.PO = window.PO || {};
     // Nuevo pedido
     $("nuevo-volver").addEventListener("click", () => ir(estado.edicionBorradorId ? "detalle" : "listado"));
     $("btn-agregar-item").addEventListener("click", () => { agregarFilaItem(); autoguardar(); });
+    $("btn-pegar-lista").addEventListener("click", abrirPegarLista);
     $("form-pedido").addEventListener("submit", (e) => { e.preventDefault(); guardarPedido("enviado"); });
     $("btn-guardar-borrador").addEventListener("click", () => guardarPedido("borrador"));
     $("form-pedido").addEventListener("input", autoguardar);
@@ -1696,6 +1697,193 @@ window.PO = window.PO || {};
 
     autoguardar();
     return { nuevos, sumados };
+  }
+
+
+  /* --- Pegar o dictar la lista ------------------------------------------
+     El director rara vez arma la lista: se la pasa el plomero o el capataz,
+     por WhatsApp o en un papel. Antes la transcribía renglón por renglón;
+     ahora la pega entera y sólo decide donde de verdad hay dos opciones. --- */
+
+  let revision = null;   // lo que devolvió el lector, mientras el panel vive
+
+  function cerrarPegarLista() {
+    revision = null;
+    cerrarPanelMateriales();
+  }
+
+  function abrirPegarLista() {
+    if (document.querySelector(".mat-panel")) return;
+    if (!$("pedido-rubro").value) { toast("Elegí primero el rubro."); return; }
+
+    const panel = document.createElement("div");
+    panel.className = "mat-panel";
+    panel.innerHTML =
+      '<div class="mat-cab">' +
+        '<strong class="mat-titulo">Pegar la lista</strong>' +
+        '<button type="button" class="mat-cerrar">Cerrar</button>' +
+      "</div>" +
+      '<div class="mat-lista" id="lista-cuerpo"></div>' +
+      '<div class="mat-pie">' +
+        '<button type="button" class="mat-agregar" id="lista-accion">Leer la lista</button>' +
+      "</div>";
+    document.body.appendChild(panel);
+    document.body.style.overflow = "hidden";
+    panel.querySelector(".mat-cerrar").addEventListener("click", cerrarPegarLista);
+    pasoPegar();
+  }
+
+  function pasoPegar() {
+    $("lista-cuerpo").innerHTML =
+      '<div class="lista-ayuda">Pegala tal como te la mandaron. También podés ' +
+        "dictarla con el micrófono del teclado.</div>" +
+      '<textarea class="lista-texto" id="lista-texto" rows="12" ' +
+        'placeholder="20 tira caño de 110 x 4mts&#10;6 codo a 90 de 110 m.h&#10;' +
+        '8 ramal a 45 de 110 x 110&#10;…"></textarea>';
+    const b = $("lista-accion");
+    b.textContent = "Leer la lista";
+    b.classList.add("con-elegidos");
+    b.onclick = leerLoPegado;
+    setTimeout(() => { const t = $("lista-texto"); if (t) t.focus(); }, 60);
+  }
+
+  function leerLoPegado() {
+    const texto = ($("lista-texto") || {}).value || "";
+    if (!texto.trim()) { toast("Pegá la lista primero."); return; }
+    revision = PO.lector.leer(texto, catalogoDe($("pedido-rubro").value));
+    if (!revision.resumen.total) {
+      toast("No encontré renglones con cantidad adelante.");
+      return;
+    }
+    pasoRevisar();
+  }
+
+  /** Un renglón con más de una opción: el original arriba y los candidatos
+      como botones grandes. Es lo único que se le pide tocar. */
+  function filaDuda(it, i) {
+    return '<div class="rev-duda" data-i="' + i + '">' +
+      '<div class="rev-pedido"><strong>' + esc(fmtCant(it.cant)) + "</strong> " +
+        esc(it.texto) + "</div>" +
+      it.candidatos.map((c, k) =>
+        '<button type="button" class="rev-op" data-i="' + i + '" data-op="' + k + '">' +
+        esc(c) + "</button>").join("") +
+      '<button type="button" class="rev-op rev-op-libre" data-i="' + i + '" data-op="-1">' +
+        "Dejarlo como lo escribí</button>" +
+      "</div>";
+  }
+
+  function pasoRevisar() {
+    const r = revision;
+    const dudas = r.items.filter((i) => !i.nota && !i.elegido && i.candidatos.length);
+    const listos = r.items.filter((i) => !i.nota && i.elegido);
+    const libres = r.items.filter((i) => !i.nota && !i.elegido && !i.candidatos.length);
+    const notas = r.items.filter((i) => i.nota);
+
+    let h = '<div class="rev-resumen">' +
+      '<span class="rev-chip ok">' + listos.length + " listos</span>" +
+      (dudas.length ? '<span class="rev-chip duda">' + dudas.length + " a elegir</span>" : "") +
+      (libres.length ? '<span class="rev-chip libre">' + libres.length + " como texto</span>" : "") +
+      "</div>";
+
+    if (r.obra) h += '<div class="rev-dato">Obra en la lista: <strong>' + esc(r.obra) + "</strong></div>";
+    if (r.retira) h += '<div class="rev-dato">Lo retira: <strong>' + esc(r.retira) + "</strong></div>";
+
+    if (dudas.length) {
+      h += '<div class="rev-titulo">Elegí cuál es</div>';
+      r.items.forEach((it, i) => { if (dudas.indexOf(it) >= 0) h += filaDuda(it, i); });
+    }
+
+    // El resto, plegado: está bien, no hace falta mirarlo renglón por renglón.
+    const plegado = (titulo, lista, clase) => {
+      if (!lista.length) return "";
+      return '<details class="rev-grupo"><summary>' + titulo + "</summary>" +
+        lista.map((it) => '<div class="rev-fila ' + clase + '">' +
+          '<span class="rev-cant">' + esc(fmtCant(it.cant)) + "</span>" +
+          '<span class="rev-nombre">' + esc(it.elegido || it.texto) + "</span>" +
+          (it.otraMarca ? '<span class="rev-marca">otra marca</span>' : "") +
+          (it.porNota ? '<span class="rev-marca">por la nota</span>' : "") +
+          "</div>").join("") + "</details>";
+    };
+    h += plegado(listos.length + " reconocidos del catálogo", listos, "ok");
+    h += plegado(libres.length + " que van como texto libre", libres, "libre");
+
+    if (notas.length) {
+      h += '<div class="rev-notas">No los tomé como material: ' +
+        notas.map((n) => esc(n.texto)).join(" · ") + "</div>";
+    }
+
+    $("lista-cuerpo").innerHTML = h;
+    $("lista-cuerpo").scrollTop = 0;
+
+    // Elegir una opción: se marca y la duda se cierra sola. La misma decisión
+    // se aplica a los renglones que ofrecían exactamente lo mismo: el plomero
+    // escribe "manguito de 110" y "cupla 110" para la misma pieza, y no tiene
+    // sentido preguntar dos veces.
+    $("lista-cuerpo").querySelectorAll(".rev-op").forEach((b) => {
+      b.addEventListener("click", () => {
+        const it = revision.items[parseInt(b.dataset.i, 10)];
+        const k = parseInt(b.dataset.op, 10);
+        const mismos = JSON.stringify(it.candidatos);
+        const elegido = k >= 0 ? it.candidatos[k] : null;
+
+        let iguales = 0;
+        revision.items.forEach((otro) => {
+          if (otro.elegido || JSON.stringify(otro.candidatos) !== mismos) return;
+          otro.elegido = elegido;
+          otro.candidatos = [];      // ya está decidido
+          iguales++;
+        });
+        if (iguales > 1) toast("Apliqué lo mismo a " + iguales + " renglones iguales.");
+        pasoRevisar();
+      });
+    });
+
+    const boton = $("lista-accion");
+    boton.textContent = "Crear el pedido · " + r.resumen.total +
+      (r.resumen.total === 1 ? " material" : " materiales");
+    boton.classList.add("con-elegidos");
+    boton.onclick = aplicarLista;
+  }
+
+  /** Pasa la lista al editor de materiales del formulario. */
+  function aplicarLista() {
+    const r = revision;
+    if (!r) return;
+
+    // Si el editor está como recién abierto (una fila vacía), se reemplaza.
+    const filas = Array.from($("items-editor").children);
+    const vacio = filas.length === 1 && !filas[0].querySelector(".it-desc").value.trim();
+    if (vacio) filas[0].remove();
+
+    let sumados = 0;
+    r.items.forEach((it) => {
+      if (it.nota) return;
+      agregarFilaItem({
+        descripcion: it.elegido || it.texto,
+        cantidad: it.cant,
+        unidad: it.unidad || "un."
+      });
+      sumados++;
+    });
+
+    // La obra que venía escrita en la lista, si el formulario no tiene una.
+    if (r.obra && !$("pedido-obra").value) {
+      $("pedido-obra-buscar").value = r.obra;
+      sincronizarObraEscrita();
+    }
+    // Quién lo retira va en las observaciones: es lo que administración
+    // necesita saber para avisarle al proveedor.
+    if (r.retira) {
+      const obs = $("pedido-obs");
+      const nota = "Lo retira " + r.retira;
+      if (obs && obs.value.indexOf(nota) < 0) {
+        obs.value = (obs.value ? obs.value.trim() + "\n" : "") + nota;
+      }
+    }
+
+    cerrarPegarLista();
+    autoguardar();
+    toast(sumados + (sumados === 1 ? " material cargado." : " materiales cargados."));
   }
 
   function agregarFilaItem(it) {
@@ -3224,6 +3412,8 @@ window.PO = window.PO || {};
     codigoDeRubro,
     leerItemsSegunRubro,
     agregarFilaItem,
+    abrirPegarLista,
+    leerLoPegado,
     diasDesdeElEnvio,
     abrirModalRecepcion,
     abrirModalProveedor,

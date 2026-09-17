@@ -1606,3 +1606,160 @@ select.input option { background: var(--bg-2); color: var(--text); }
   color: var(--cta-text);
   border-color: var(--cta-bg);
 }
+
+/* ===========================================================================
+   PEGAR O DICTAR UNA LISTA
+   La lista de materiales casi siempre llega escrita por el plomero o el
+   capataz. El director la pega entera y sólo elige donde de verdad hay dos
+   opciones: el resto de la pantalla está pensada para que no tenga que
+   revisar renglón por renglón.
+   =========================================================================== */
+
+.btn-pegar {
+  background: var(--bg-2);
+  color: var(--text);
+  border: 1px dashed var(--line-strong);
+  margin-bottom: 10px;
+}
+.btn-pegar:active { background: var(--acento-suave); }
+
+.mat-titulo { flex: 1; font-size: 16px; font-weight: 600; }
+
+.lista-ayuda {
+  padding: 14px 16px 6px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-3);
+}
+.lista-texto {
+  display: block;
+  width: calc(100% - 24px);
+  margin: 6px 12px 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--bg-input);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 16px;          /* menos de 16 y iOS hace zoom al enfocar */
+  line-height: 1.5;
+  resize: vertical;
+}
+
+/* --- El resumen de arriba: de un vistazo, cuánto quedó por hacer --- */
+.rev-resumen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 16px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--line);
+}
+.rev-chip {
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.rev-chip.ok    { background: rgba(46, 125, 50, 0.14); color: var(--ok); }
+.rev-chip.duda  { background: rgba(148, 94, 6, 0.16);  color: var(--warn); }
+/* El neutro va con el par de "borrador", que es el gris del sistema y ya
+   está resuelto en los dos temas: --gris es un token fijo y en oscuro
+   quedaba texto claro sobre fondo claro. */
+.rev-chip.libre { background: var(--e-borrador-bg); color: var(--e-borrador-tx); }
+
+.rev-dato {
+  padding: 9px 16px;
+  font-size: 14px;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--line);
+}
+.rev-titulo {
+  padding: 14px 16px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* --- Lo único que pide el dedo del director --- */
+.rev-duda {
+  margin: 0 12px 12px;
+  padding: 10px;
+  border: 1px solid var(--warn);
+  border-radius: 12px;
+  background: var(--bg-2);
+}
+.rev-pedido {
+  padding: 2px 4px 9px;
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--text);
+}
+.rev-op {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  margin-bottom: 6px;
+  padding: 11px 13px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+}
+.rev-op:active { background: var(--acento-suave); border-color: var(--acento); }
+.rev-op:last-child { margin-bottom: 0; }
+.rev-op-libre { color: var(--text-3); font-style: italic; }
+
+/* --- Lo que ya está resuelto queda plegado y contado --- */
+.rev-grupo {
+  border-top: 1px solid var(--line);
+  background: var(--bg-2);
+}
+.rev-grupo > summary {
+  padding: 14px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+}
+.rev-fila {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  line-height: 1.35;
+}
+.rev-cant {
+  flex: 0 0 34px;
+  font-weight: 700;
+  text-align: right;
+  color: var(--text);
+}
+.rev-nombre { flex: 1; min-width: 0; color: var(--text-2); }
+.rev-fila.libre .rev-nombre { font-style: italic; }
+.rev-marca {
+  flex: 0 0 auto;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(148, 94, 6, 0.16);
+  color: var(--warn);
+}
+.rev-notas {
+  padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-3);
+}
