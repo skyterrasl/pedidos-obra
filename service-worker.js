@@ -12,7 +12,7 @@
    ¿Cambiaste archivos y no ves la novedad? Subí la versión (v1 → v2).
    ============================================================================ */
 
-const CACHE = "pedidos-obra-v57";
+const CACHE = "pedidos-obra-v59";
 
 const APP_SHELL = [
   "./",
@@ -34,6 +34,7 @@ const APP_SHELL = [
   "./js/export.js",
   "./js/seed.js",
   "./js/materiales.js",
+  "./js/lector-lista.js",
   "./js/push.js",
   "./js/sso-erp.js",
   "./js/app.js",
