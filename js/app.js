@@ -2639,7 +2639,9 @@ window.PO = window.PO || {};
 
     lineas.push("Hola! Pedido de Sky Terra" + (p.numero ? " (" + p.numero + ")" : "") + ":");
     lineas.push("");
-    (p.items || []).forEach((it) =>
+    // Lo que ya se fue a otro proveedor no se le vuelve a pedir a este: ya
+    // dijo que no lo tiene.
+    itemsVivos(p).forEach((it) =>
       lineas.push("- " + fmtCant(it.cantidad) + " " + (it.unidad || "un.") + " · " + it.descripcion));
     lineas.push("");
 
