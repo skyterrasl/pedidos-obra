@@ -87,7 +87,10 @@ PO.store = {
   subObras(cb) {
     return PO.fb.db.collection("obras").orderBy("nombre")
       .onSnapshot(
-        (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+        (snap) => cb(snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          // Las borradas a mano no vuelven a aparecer. Ver borrarObra().
+          .filter((o) => !o.ignorada)),
         (err) => console.error("[PO] Error escuchando obras:", err)
       );
   },
@@ -101,9 +104,17 @@ PO.store = {
 
   /** Borra una obra (solo admin, ver firestore.rules). Los pedidos que la
       referenciaban conservan su obraNombre, así que el historial se sigue
-      leyendo. Para una obra que ya trabajó, preferir estado "finalizada". */
-  async borrarObra(id) {
-    await PO.fb.db.collection("obras").doc(id).delete();
+      leyendo.
+
+      Las que vienen de Gestión NO se borran del todo: se marcan ignoradas.
+      Borrarlas de verdad no servía de nada —el ERP espeja sus obras cada vez
+      que arranca y la volvía a crear a los minutos—, así que parecía que el
+      botón no funcionaba. Marcada, el espejo la sigue encontrando y no la
+      recrea, y para la app es como si no existiera. */
+  async borrarObra(id, esDeGestion) {
+    const doc = PO.fb.db.collection("obras").doc(id);
+    if (esDeGestion) await doc.update({ ignorada: true });
+    else await doc.delete();
   },
 
   /* ------------------------------------------------------------------ rubros */

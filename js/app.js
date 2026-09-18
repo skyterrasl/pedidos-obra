@@ -1270,14 +1270,21 @@ window.PO = window.PO || {};
 
     $("nuevo-titulo").textContent = editando ? "Editar borrador" : "Nuevo pedido";
 
-    // Obras: activas y por comenzar (se puede ir cargando el pedido antes
-    // de que arranque). Director ve solo las suyas asignadas; admin, todas.
-    const activas = estado.obras.filter((o) => OBRA_SELECCIONABLE.includes(o.estado));
-    const disponibles = esAdmin() ? activas
-      : activas.filter((o) => (o.directores || []).includes(estado.usuario.uid));
+    // Todas las obras de la lista se pueden pedir. Antes se ofrecían sólo las
+    // activas y por comenzar, y el estado lo manda Gestión: una obra que el
+    // ERP daba por terminada desaparecía del selector aunque en el terreno se
+    // siguiera trabajando, y no había forma de pedirle materiales. Si una obra
+    // ya no va, se borra de la lista y listo.
+    // Director ve sólo las suyas asignadas; admin, todas.
+    const disponibles = esAdmin() ? estado.obras
+      : estado.obras.filter((o) => (o.directores || []).includes(estado.usuario.uid));
     $("pedido-obra").innerHTML = '<option value="">Elegí la obra…</option>' +
       disponibles.map((o) =>
-        '<option value="' + esc(o.id) + '">' + esc(o.nombre) + "</option>"
+        '<option value="' + esc(o.id) + '">' + esc(o.nombre) +
+        // El estado sigue estando a la vista: pedir para una obra que Gestión
+        // da por terminada se puede, pero que no sea por distracción.
+        (OBRA_SELECCIONABLE.includes(o.estado) ? "" : " (" + esc(ESTADOS_OBRA[o.estado] || o.estado) + ")") +
+        "</option>"
       ).join("");
     // Un toque menos en el caso más común: si solo tiene una obra asignada, se precarga.
     if (disponibles.length === 1) $("pedido-obra").value = disponibles[0].id;
@@ -3055,15 +3062,19 @@ window.PO = window.PO || {};
         '<button type="button" class="btn btn-primario" id="btn-guardar-obra">' +
           (editando ? "Actualizar obra" : "Agregar obra") + "</button>" +
       "</div>" +
-      '<p class="nota-suave" style="margin-top:8px">Una obra finalizada no aparece para pedidos nuevos, pero conserva todo su historial.</p>' +
+      '<p class="nota-suave" style="margin-top:8px">Todas las obras de esta lista se ' +
+      "pueden pedir, esté como esté su estado. La que ya no va, borrala: si viene de " +
+      "Gestión no vuelve a aparecer acá aunque siga allá.</p>" +
       "</div>" +
       '<ul class="lista-gestion">' +
       (estado.obras.length ? estado.obras.map((o) => {
         const nombres = (o.directores || [])
           .map((uid) => { const u = estado.usuarios.find((x) => x.uid === uid); return u ? u.nombre : null; })
           .filter(Boolean).join(", ");
-        return '<li class="gestion-item' +
-          (["pausada", "finalizada"].includes(o.estado) ? " apagado" : "") + '">' +
+        // Sin apagar: una obra pausada o finalizada igual se puede pedir, así
+        // que pintarla en gris sólo hacía pensar que estaba rota. El estado se
+        // lee en la línea de abajo.
+        return '<li class="gestion-item">' +
           "<div><div class='g-titulo'>" + esc(o.nombre) + "</div>" +
           "<div class='g-sub'>" + esc(o.direccion || "—") + " · " + esc(o.cliente || "—") +
           " · " + esc(ESTADOS_OBRA[o.estado] || o.estado) + (nombres ? " · Dir.: " + esc(nombres) : "") + "</div></div>" +
@@ -3112,12 +3123,11 @@ window.PO = window.PO || {};
         const conPedidos = estado.pedidos.filter((p) => p.obraId === o.id).length;
         const aviso = conPedidos
           ? "\n\nOJO: la obra tiene " + conPedidos + " pedido(s). Se conservan en el " +
-            "historial con el nombre de la obra, pero dejan de estar asociados.\n" +
-            "Si la obra ya trabajó, conviene marcarla “Finalizada” en vez de borrarla."
+            "historial con el nombre de la obra, pero dejan de estar asociados."
           : "";
         if (!confirm("¿Borrar la obra “" + o.nombre + "”?" + aviso)) return;
         try {
-          await PO.store.borrarObra(o.id);
+          await PO.store.borrarObra(o.id, obraDelErp(o));
           toast("Obra borrada.");
           renderTabObras();
         } catch (e) {
