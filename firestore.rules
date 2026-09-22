@@ -123,15 +123,26 @@ service cloud.firestore {
 
       // Transiciones:
       // - admin: todas.
-      // - director: (a) editar/enviar SU borrador, (b) recepciones en obras
-      //   asignadas (resultado entrega_parcial/entregado), (c) cancelar SU
-      //   pedido, (d) reclamar (NO cambia estado, solo agrega historial) en
-      //   obras asignadas. Nunca puede poner 'pedido_proveedor'.
+      // - director: (a) editar/enviar SU borrador, (b) corregir SU pedido
+      //   mientras no se haya comprado, (c) recepciones en obras asignadas
+      //   (resultado entrega_parcial/entregado), (d) cancelar SU pedido,
+      //   (e) reclamar (NO cambia estado, solo agrega historial) en obras
+      //   asignadas. Nunca puede poner 'pedido_proveedor'.
       allow update: if esAdmin()
         || (esDirector() && (
              (resource.data.estado == 'borrador'
                && resource.data.solicitanteUid == request.auth.uid
                && request.resource.data.estado in ['borrador', 'enviado'])
+          // Corregir lo ya enviado: el que lo pidió, mientras administración
+          // no lo haya comprado. Se toca SOLO el contenido — la obra, el
+          // rubro, el número, el solicitante y el estado quedan como están,
+          // así nadie se muda un pedido de obra ni se apropia del ajeno.
+          || (resource.data.estado == 'enviado'
+               && request.resource.data.estado == 'enviado'
+               && resource.data.solicitanteUid == request.auth.uid
+               && request.resource.data.diff(resource.data).affectedKeys()
+                    .hasOnly(['items', 'observaciones', 'entrega',
+                              'detalleRubro', 'historial']))
           || (request.resource.data.estado in ['entrega_parcial', 'entregado']
                && resource.data.estado in ['pedido_proveedor', 'entrega_parcial']
                && asignadoAObra(resource.data.obraId))

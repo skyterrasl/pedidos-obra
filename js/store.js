@@ -307,6 +307,9 @@ PO.store = {
       case "enviado":
         return (pedido.prioridad === "urgente" ? "URGENTE · " : "") +
           "Nuevo pedido " + num + " · " + obra + " (" + pedido.rubro + ") de " + pedido.solicitanteNombre;
+      case "editado":
+        return num + " CAMBIÓ · " + obra + " — lo corrigió " + actor.nombre +
+          ". Fijate la lista antes de comprar.";
       case "pedido_proveedor":
         return num + " pedido a " + ((pedido.proveedor && pedido.proveedor.nombre) || "proveedor") +
           ((pedido.proveedor && pedido.proveedor.fechaEstimada) ? " · llega " + pedido.proveedor.fechaEstimada : "");
@@ -336,7 +339,7 @@ PO.store = {
     try {
       const notificaContraparte = ["cancelado", "reclamo"]; // avisa al "otro lado" de quien actuó
       const haciaAdmins =
-        ["enviado", "entrega_parcial", "entregado"].includes(evento) ||
+        ["enviado", "editado", "entrega_parcial", "entregado"].includes(evento) ||
         (notificaContraparte.includes(evento) && actor.rol !== "admin");
 
       let destinatarios = [];

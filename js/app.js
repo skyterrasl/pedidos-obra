@@ -121,6 +121,7 @@ window.PO = window.PO || {};
     cancelado:        "Pedido cancelado",
     reclamo:          "Reclamo enviado",
     falta:            "El proveedor no lo tenía",
+    editado:          "Pedido corregido",
     recibido:         "Recibido por administración" // histórico: el paso se eliminó
   };
 
@@ -1272,7 +1273,13 @@ window.PO = window.PO || {};
     const editando = estado.edicionBorradorId
       ? estado.pedidos.find((p) => p.id === estado.edicionBorradorId) : null;
 
-    $("nuevo-titulo").textContent = editando ? "Editar borrador" : "Nuevo pedido";
+    // Un pedido ya enviado se corrige, no se vuelve a enviar: cambia el
+    // título y queda un solo botón.
+    const corrigiendo = editando && editando.estado !== "borrador";
+    $("nuevo-titulo").textContent = !editando ? "Nuevo pedido"
+      : (corrigiendo ? "Corregir " + (editando.numero || "el pedido") : "Editar borrador");
+    $("btn-enviar-pedido").textContent = corrigiendo ? "Guardar los cambios" : "Enviar pedido";
+    $("btn-guardar-borrador").classList.toggle("oculto", !!corrigiendo);
 
     // Todas las obras de la lista se pueden pedir. Antes se ofrecían sólo las
     // activas y por comenzar, y el estado lo manda Gestión: una obra que el
@@ -2216,6 +2223,28 @@ window.PO = window.PO || {};
 
   /* --- Guardar (borrador o enviado) --- */
 
+  /** Compara dos listas de materiales y devuelve los cambios en criollo, para
+      que en el historial se lea qué pasó sin tener que adivinar. */
+  function resumirCambios(antes, despues) {
+    const mapA = new Map((antes || []).map((i) => [clave(i.descripcion), i]));
+    const mapD = new Map((despues || []).map((i) => [clave(i.descripcion), i]));
+    const lineas = [];
+
+    mapD.forEach((it, k) => {
+      const viejo = mapA.get(k);
+      if (!viejo) {
+        lineas.push("+ " + fmtCant(it.cantidad) + " " + (it.unidad || "un.") + " " + it.descripcion);
+      } else if (parseCant(viejo.cantidad) !== parseCant(it.cantidad)) {
+        lineas.push("~ " + it.descripcion + ": " + fmtCant(viejo.cantidad) +
+          " → " + fmtCant(it.cantidad) + " " + (it.unidad || "un."));
+      }
+    });
+    mapA.forEach((it, k) => {
+      if (!mapD.has(k)) lineas.push("− " + it.descripcion + " (se sacó)");
+    });
+    return lineas;
+  }
+
   async function guardarPedido(modo) {
     mostrarError("pedido-error", "");
     const u = estado.usuario;
@@ -2246,6 +2275,36 @@ window.PO = window.PO || {};
           observaciones: $("pedido-obs").value.trim(),
           items: res.items
         };
+
+        // Un pedido ya enviado se corrige en su lugar: mismo número, mismo
+        // estado. La obra y el rubro no se tocan — el número lleva la serie
+        // del rubro y cambiarlo lo dejaría inconsistente.
+        if (p.estado !== "borrador") {
+          const cambios = resumirCambios(p.items, res.items);
+          const mismaObs = campos.observaciones === (p.observaciones || "");
+          if (!cambios.length && mismaObs) {
+            toast("No cambiaste nada.");
+            estado.edicionBorradorId = null;
+            ir("detalle");
+            return;
+          }
+          await PO.store.actualizarPedido(p.id, {
+            entrega: campos.entrega,
+            detalleRubro: campos.detalleRubro,
+            observaciones: campos.observaciones,
+            items: campos.items,
+            historial: (p.historial || []).concat([{
+              accion: "editado", usuarioNombre: u.nombre, ts: ahora,
+              nota: cambios.length ? cambios.join("\n") : "Cambió la observación."
+            }])
+          });
+          PO.store.notificarTransicion("editado", { ...p, ...campos, id: p.id }, u);
+          estado.edicionBorradorId = null;
+          toast("Pedido corregido. Administración ya está avisada.");
+          ir("detalle");
+          return;
+        }
+
         if (modo === "borrador") {
           await PO.store.actualizarPedido(p.id, campos);
           toast("Borrador actualizado.");
@@ -2295,7 +2354,13 @@ window.PO = window.PO || {};
       ir("listado");
     } catch (err) {
       console.error(err);
-      mostrarError("pedido-error", "No se pudo guardar: " + (err.message || err));
+      // Corregir un pedido enviado necesita la regla nueva de Firestore. Si
+      // todavía no se publicó, el error es de permisos y no dice nada útil.
+      const dePermisos = /permission|insufficient|PERMISSION_DENIED/i.test(err.message || "");
+      mostrarError("pedido-error", dePermisos && estado.edicionBorradorId
+        ? "Firestore todavía no tiene publicada la regla que permite corregir " +
+          "un pedido enviado. Avisale a Nico: se pega en Firebase → Firestore → Reglas."
+        : "No se pudo guardar: " + (err.message || err));
     } finally {
       botones.forEach((b) => b.disabled = false);
     }
@@ -2536,6 +2601,12 @@ window.PO = window.PO || {};
 
     /* Acciones según rol + estado */
     const botones = [];
+    // Mientras administración no lo compró, el que lo pidió lo puede
+    // corregir. Después no: el proveedor ya tiene la lista.
+    if (p.estado === "enviado" && soySolicitante) {
+      botones.push('<button type="button" class="btn btn-ghost" id="btn-editar-pedido">' +
+        "Corregir el pedido</button>");
+    }
     if (p.estado === "borrador" && soySolicitante) {
       botones.push('<button type="button" class="btn btn-primario" id="btn-enviar-borrador">Enviar pedido</button>');
       botones.push('<button type="button" class="btn btn-ghost" id="btn-editar-borrador">Editar borrador</button>');
@@ -2576,6 +2647,7 @@ window.PO = window.PO || {};
     const on = (id, fn) => { const b = $(id); if (b) b.addEventListener("click", fn); };
     on("btn-enviar-borrador", enviarBorradorDesdeDetalle);
     on("btn-editar-borrador", () => { estado.edicionBorradorId = p.id; ir("nuevo"); });
+    on("btn-editar-pedido", () => { estado.edicionBorradorId = p.id; ir("nuevo"); });
     on("btn-borrar-borrador", async () => {
       if (!confirm("¿Eliminar este borrador? No se puede deshacer.")) return;
       try {
