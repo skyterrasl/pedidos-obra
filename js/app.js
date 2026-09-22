@@ -2648,7 +2648,7 @@ window.PO = window.PO || {};
     const obra = estado.obras.find((o) => o.id === p.obraId);
     const lineas = [];
 
-    lineas.push("Hola! Pedido de Sky Terra" + (p.numero ? " (" + p.numero + ")" : "") + ":");
+    lineas.push("Pedido de Sky Terra" + (p.numero ? " (" + p.numero + ")" : "") + ":");
     lineas.push("");
     // Lo que ya se fue a otro proveedor no se le vuelve a pedir a este: ya
     // dijo que no lo tiene.
@@ -2669,7 +2669,7 @@ window.PO = window.PO || {};
 
     if (p.observaciones) lineas.push("Aclaración: " + p.observaciones);
     lineas.push("");
-    lineas.push("Gracias! Cualquier cosa avisame precio y cuándo lo tenés.");
+    lineas.push("Gracias! Avísame por favor para cuándo lo podrían entregar.");
 
     return lineas.join("\n");
   }
