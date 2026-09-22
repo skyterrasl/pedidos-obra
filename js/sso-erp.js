@@ -116,5 +116,46 @@ PO.sso = {
 
   salioAProposito() {
     try { return localStorage.getItem(this.MARCA) === "1"; } catch (e) { return false; }
+  },
+
+  /* --- Arquitectos a cargo de cada obra ---------------------------------
+     Viven en Gestión (`obra_arquitectos`) y de ahí se espejan a Pedidos, así
+     que acá NO se pueden guardar: la próxima sincronización los pisaría. Pero
+     sí se pueden escribir EN Gestión desde acá, que es lo mismo que hace su
+     pantalla. Asignar allá dispara el espejo solo, y la obra vuelve con el
+     arquitecto puesto en menos de un segundo.
+
+     Sólo sirve servida desde /pedidos/: es la misma API y la misma sesión. */
+
+  async apiErp(ruta, opciones) {
+    const r = await fetch(ruta, Object.assign({
+      headers: {
+        "x-token": this.tokenErp(),
+        "Content-Type": "application/json"
+      },
+      cache: "no-store"
+    }, opciones || {}));
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || ("Gestión respondió " + r.status));
+    return d;
+  },
+
+  /** Todas las asignaciones obra ↔ arquitecto, como las tiene Gestión. */
+  async asignaciones() {
+    const d = await this.apiErp("/api/obra/asignaciones");
+    return d.asignaciones || [];
+  },
+
+  /** @param obra código de obra (AMA-274) · @param usuario id del ERP (mica) */
+  async asignar(obra, usuario) {
+    return this.apiErp("/api/obra/asignaciones", {
+      method: "POST",
+      body: JSON.stringify({ obra: obra, usuario: usuario })
+    });
+  },
+
+  async desasignar(asignacionId) {
+    return this.apiErp("/api/obra/asignaciones/" + encodeURIComponent(asignacionId),
+      { method: "DELETE" });
   }
 };

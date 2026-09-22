@@ -317,6 +317,22 @@ body.hay-offline .topbar { top: 32px; }
 }
 .btn-tema-topbar:hover { opacity: 1; background: rgba(245, 242, 237, 0.1); }
 
+/* El mismo botón, pero en la pantalla de acceso: ahí no hay barra oscura detrás, así
+   que lleva el color del texto de la tarjeta y muestra el nombre del tema al lado del
+   ícono — sin barra donde apoyarse, un símbolo solo no dice qué hace. */
+.btn-tema-auth {
+  border: 1px solid var(--borde);
+  background: transparent;
+  color: var(--texto-suave);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.btn-tema-auth:hover { color: var(--texto); border-color: var(--acento); }
+.auth-tema { margin-top: 14px; }
+
 .btn-campana {
   position: relative;
   border: 1px solid rgba(245, 242, 237, 0.35);

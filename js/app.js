@@ -458,6 +458,7 @@ window.PO = window.PO || {};
   document.addEventListener("DOMContentLoaded", () => {
     conectarEventos();
     aplicarTema(temaElegido());
+    pintarTemaTopbar();   // incluye el botón del acceso, que se ve sin sesión
     pintarTemaTopbar();
     avisarComoEntrar();
     actualizarBannerConexion();
@@ -706,6 +707,9 @@ window.PO = window.PO || {};
       })
     );
     $("btn-tema-topbar").addEventListener("click", cambiarTemaTopbar);
+    /* El del acceso: mismo manejador. `pintarTemaTopbar` ya los mantiene iguales. */
+    const _bta = $("btn-tema-auth");
+    if (_bta) _bta.addEventListener("click", cambiarTemaTopbar);
 
 
     // Materiales de un rubro
@@ -2989,12 +2993,55 @@ window.PO = window.PO || {};
       se pisan en cada sincronización. Acá solo se le agrega la dirección. */
   const obraDelErp = (o) => o && o.origen === "erp";
 
+  /** Los arquitectos de una obra de Gestión se pueden tocar desde acá sólo si
+      hay sesión de Gestión: se escriben en SU base, no en la de Pedidos. */
+  function puedeAsignarEnGestion() {
+    return !!(window.PO && PO.sso && PO.sso.hayGestion() && esAdmin());
+  }
+
+  /** El id con el que Gestión conoce a este usuario. Los uid de Pedidos que
+      vienen del ERP son "erp-" + su id; el que no tenga ese prefijo se cargó
+      acá y Gestión no lo conoce. */
+  const idEnGestion = (uid) =>
+    String(uid || "").indexOf("erp-") === 0 ? String(uid).slice(4) : null;
+
+  /** Deja los arquitectos de una obra de Gestión igual a lo que se marcó.
+      Devuelve cuántos se sumaron y cuántos se sacaron. */
+  async function sincronizarArquitectos(obra, elegidos) {
+    const antes = (obra.directores || []).filter(idEnGestion);
+    const ahora = (elegidos || []).filter(idEnGestion);
+
+    const suman = ahora.filter((u) => antes.indexOf(u) < 0);
+    const sacan = antes.filter((u) => ahora.indexOf(u) < 0);
+    if (!suman.length && !sacan.length) return { suman: 0, sacan: 0 };
+
+    for (const uid of suman) {
+      await PO.sso.asignar(obra.nombre, idEnGestion(uid));
+    }
+    if (sacan.length) {
+      // Para dar de baja hace falta el id de la asignación, que sólo lo tiene
+      // Gestión: se pide la lista y se busca la de esta obra y ese arquitecto.
+      const todas = await PO.sso.asignaciones();
+      for (const uid of sacan) {
+        const id = idEnGestion(uid);
+        const fila = todas.find((x) =>
+          clave(x.obra) === clave(obra.nombre) && clave(x.usuario) === clave(id));
+        if (fila) await PO.sso.desasignar(fila.id);
+      }
+    }
+    return { suman: suman.length, sacan: sacan.length };
+  }
+
+
   function renderTabObras() {
     const cont = $("gestion-contenido");
-    const directores = estado.usuarios.filter((x) => x.rol === "director" && x.activo !== false);
+    let directores = estado.usuarios.filter((x) => x.rol === "director" && x.activo !== false);
     const editando = estado.obraEditandoId
       ? estado.obras.find((o) => o.id === estado.obraEditandoId) : null;
     const deGestion = obraDelErp(editando);
+    // En una obra de Gestión sólo se pueden marcar los arquitectos que Gestión
+    // conoce: a los cargados a mano en Pedidos no sabría a quién asignarles.
+    if (deGestion) directores = directores.filter((d) => idEnGestion(d.uid));
 
     const obrasExistentes = new Set(estado.obras.map((o) => clave(o.nombre)));
     const sugerencias = SUGERENCIAS_OBRAS.filter((s) => !obrasExistentes.has(clave(s.nombre)));
@@ -3021,8 +3068,12 @@ window.PO = window.PO || {};
         : "") +
       (deGestion
         ? '<p class="nota-suave" style="margin-bottom:12px">Esta obra viene de Gestión: ' +
-          "el código, el estado y los arquitectos se cambian allá (Obra → Obras) y acá " +
-          "se actualizan solos. Lo que sí conviene cargar es la <strong>dirección</strong>: " +
+          "el código y el estado se cambian allá y acá se actualizan solos. " +
+          (puedeAsignarEnGestion()
+            ? "El <strong>arquitecto a cargo</strong> sí se puede cambiar desde acá: se " +
+              "guarda en Gestión, igual que si lo hicieras allá. "
+            : "") +
+          "Lo que sí conviene cargar es la <strong>dirección</strong>: " +
           "es la que se le manda al proveedor para decirle dónde entregar.</p>"
         : "") +
       '<label class="campo"><span>Nombre (código de la planilla, ej: AMA-274)</span>' +
@@ -3041,8 +3092,9 @@ window.PO = window.PO || {};
       "</select></label>" +
       '<div class="campo"><span class="campo-titulo">' +
         (deGestion ? "Arquitecto a cargo" : "Directores asignados") + "</span>" +
-      (deGestion
-        // Los asigna dirección en Obra → Obras: acá se informa quién es.
+      (deGestion && !puedeAsignarEnGestion()
+        // Sin la sesión de Gestión (por ejemplo desde GitHub Pages) no hay a
+        // dónde escribir: se informa quién está a cargo y nada más.
         ? '<p class="nota-suave" style="margin:0">' +
           ((editando.directores || []).map((uid) => {
             const u = estado.usuarios.find((x) => x.uid === uid);
@@ -3093,6 +3145,8 @@ window.PO = window.PO || {};
       // En una obra de Gestión solo se guarda la dirección. Lo demás lo manda
       // el ERP, y los arquitectos ni siquiera están en pantalla: guardarlos
       // desde acá los dejaría vacíos hasta la próxima sincronización.
+      const marcados = Array.from(cont.querySelectorAll(".obra-director:checked"))
+        .map((c) => c.value);
       const datos = deGestion
         ? { direccion: $("obra-direccion").value.trim() }
         : {
@@ -3100,11 +3154,30 @@ window.PO = window.PO || {};
             direccion: $("obra-direccion").value.trim(),
             cliente: $("obra-cliente").value.trim(),
             estado: $("obra-estado").value,
-            directores: Array.from(cont.querySelectorAll(".obra-director:checked")).map((c) => c.value)
+            directores: marcados
           };
       try {
         await PO.store.guardarObra(estado.obraEditandoId, datos);
-        toast(estado.obraEditandoId ? "Obra actualizada." : "Obra " + nombre + " agregada.");
+
+        // Los arquitectos de una obra de Gestión se escriben allá. Va después
+        // de guardar la dirección para que un error de red no se lleve puesto
+        // también ese cambio.
+        let arq = null;
+        if (deGestion && puedeAsignarEnGestion()) {
+          try {
+            arq = await sincronizarArquitectos(editando, marcados);
+          } catch (e) {
+            // La dirección ya quedó guardada: decirlo, o el mensaje haría
+            // pensar que no se guardó nada y se carga de nuevo.
+            mostrarError("obra-error", "La dirección se guardó, pero el arquitecto no: " +
+              (e.message || e) + ". Probá de nuevo o asignalo en Gestión → Obra.");
+            return;
+          }
+        }
+
+        toast(arq && (arq.suman || arq.sacan)
+          ? "Obra actualizada. El arquitecto quedó guardado en Gestión."
+          : (estado.obraEditandoId ? "Obra actualizada." : "Obra " + nombre + " agregada."));
         estado.obraEditandoId = null;
         renderTabObras();
       } catch (e) {
@@ -3545,11 +3618,15 @@ window.PO = window.PO || {};
   const ICO_TEMA = { auto: "◐", claro: "☀", oscuro: "☾" };
   const ROTULO_TEMA = { auto: "Automático", claro: "Claro", oscuro: "Oscuro" };
   function pintarTemaTopbar() {
-    const b = $("btn-tema-topbar");
-    if (!b) return;
     const t = temaElegido();
-    b.textContent = ICO_TEMA[t];
-    b.title = "Tema: " + ROTULO_TEMA[t] + " (tocar para cambiar)";
+    /* Dos botones, el mismo estado: el de la barra (dentro) y el del acceso (antes
+       de entrar). Se pintan juntos para que no puedan decir cosas distintas. */
+    ["btn-tema-topbar", "btn-tema-auth"].forEach((id) => {
+      const b = $(id);
+      if (!b) return;
+      b.textContent = ICO_TEMA[t] + (id === "btn-tema-auth" ? "  " + ROTULO_TEMA[t] : "");
+      b.title = "Tema: " + ROTULO_TEMA[t] + " (tocar para cambiar)";
+    });
   }
   function cambiarTemaTopbar() {
     const orden = ["auto", "claro", "oscuro"];
