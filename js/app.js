@@ -653,6 +653,17 @@ window.PO = window.PO || {};
       }));
     $("falta-cancelar").addEventListener("click", () => cerrarModal("modal-falta"));
     $("falta-confirmar").addEventListener("click", guardarFaltantes);
+    /* Enter NO manda el pedido. El teclado del celular muestra "Listo" o la
+       flecha de Enter, y al tocarlo para pasar al campo siguiente se disparaba
+       el envío: el pedido salía a medio cargar y sin vuelta atrás, porque ya
+       le avisa a administración. Ahora Enter cierra el teclado y nada más; se
+       envía tocando el botón, que es un gesto a propósito.
+       En las observaciones sí escribe un renglón nuevo, como corresponde. */
+    $("form-pedido").addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" || (e.target && e.target.tagName === "TEXTAREA")) return;
+      e.preventDefault();
+      if (e.target && e.target.blur) e.target.blur();
+    });
     $("form-pedido").addEventListener("submit", (e) => { e.preventDefault(); guardarPedido("enviado"); });
     $("btn-guardar-borrador").addEventListener("click", () => guardarPedido("borrador"));
     $("form-pedido").addEventListener("input", autoguardar);
