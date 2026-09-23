@@ -55,8 +55,11 @@
      como metros y el largo de "codo de 110 m.h" salía 110. */
   function partirTerminacion(s) {
     const pares = [
-      ["RH", /\br\.?\s*hembra\b|\brh\b/], ["RM", /\br\.?\s*macho\b|\brm\b/],
-      ["MH", /\bm[\.\- ]?h\b|\bmh\b/], ["HH", /\bh[\.\- ]?h\b|\bhh\b|h-hc/]
+      ["RH", /\br\.?\s*hembra\b|\brh\b|\brosca\s+hembra\b/],
+      ["RM", /\br\.?\s*macho\b|\brm\b|\brosca\s+macho\b/],
+      // "HHC" también es hembra-hembra (la cupla patentada de Awaduct): sin
+      // esto parecía una pieza "común" y se elegía sola en vez de preguntar.
+      ["MH", /\bm[\.\- ]?h\b|\bmh\b/], ["HH", /\bh[\.\- ]?h\b|\bhhc?\b|h-hc/]
     ];
     for (const p of pares) if (p[1].test(s)) return { term: p[0], resto: s.replace(p[1], " ") };
     return { term: null, resto: s };
@@ -135,7 +138,9 @@
   const MARCAS = [
     [/fusion verde|termofusion/, "TIGRE"], [/awaduct/, "AWADUCT"],
     [/duratop/, "DURATOP"], [/sigas/, "SIGAS"],
-    [/acquasisten|acquasystem/, "ACQUASYSTEM"], [/saladillo|hidro3|hidroflex/, "SALADILLO"],
+    // "acquasisten", "acqua systen", "acqua system": se escribe de mil formas.
+    [/acqua\s*s[iy]s?t[ei][mn]/, "ACQUASYSTEM"], [/saladillo|hidro3|hidroflex/, "SALADILLO"],
+    [/tubotherm/, "TUBOTHERM"],
     [/tigre/, "TIGRE"], [/duke/, "DUKE"], [/amanco/, "AMANCO"],
     [/dema|epoxi/, "DEMA"], [/calibron/, "CALIBRON"], [/conexsa/, "CONEXSA"]
   ];
@@ -193,7 +198,8 @@
 
   const tokens = (t) =>
     norm(t).replace(/[^a-z0-9\/\.\s]/g, " ").split(/\s+/)
-      .filter((w) => w && w.length > 1 && VACIAS.indexOf(w) < 0);
+      // Un número de un dígito sí distingue: "colector de 7" no es el de 5.
+      .filter((w) => w && (w.length > 1 || /^\d$/.test(w)) && VACIAS.indexOf(w) < 0);
 
   /* Cuánto del renglón pedido aparece en el ítem del catálogo. Se pide que
      estén TODAS las palabras del pedido: con la mitad ya empieza a traer
@@ -241,15 +247,32 @@
       }
 
       const marca = e.marca || marcaBloque;
-      let c = filtrar(e, marca, null);
       let otraMarca = false;
 
-      // La lista viene agrupada por sistema, no por marca: dentro del bloque
-      // AWADUCT aparece la tapa de 110, que en el catálogo es AMANCO, y el
-      // lubricante, que es GALI.
-      if (!c.length && marca) {
-        c = filtrar(e, null, familiaDe(marca));
-        otraMarca = c.length > 0;
+      const conMarca = (ej) => {
+        let c = filtrar(ej, marca, null);
+        // La lista viene agrupada por sistema, no por marca: dentro del bloque
+        // AWADUCT aparece la tapa de 110, que en el catálogo es AMANCO, y el
+        // lubricante, que es GALI. Eso vale para la marca del BLOQUE. Si la
+        // marca está escrita en el mismo renglón ("acqua systen"), el plomero
+        // fue explícito y no se le ofrece otra. Y una marca que no tiene
+        // familia conocida (Tubotherm) no cae a buscar en todo el catálogo.
+        if (!c.length && marca && !e.marca && familiaDe(marca)) {
+          c = filtrar(ej, null, familiaDe(marca));
+          otraMarca = c.length > 0;
+        }
+        return c;
+      };
+
+      let c = conMarca(e);
+      // En termofusión la cupla se vende como "unión" (así la llama Tigre).
+      if (!c.length && e.pieza === "cupla") c = conMarca(Object.assign({}, e, { pieza: "union" }));
+
+      // Si no se pidió terminación, se prefiere la pieza común: "codo 45 32"
+      // es el codo de siempre, y el MH se pide diciendo "MH".
+      if (c.length > 1 && !e.term) {
+        const comunes = c.filter((x) => !x.e.term);
+        if (comunes.length && comunes.length < c.length) c = comunes;
       }
 
       // "ramal a 45 de 110 x 110": los dos diámetros iguales significan que
@@ -268,11 +291,17 @@
        la familia del bloque: sin eso, un codo de gas ofrecía también el de
        desagüe y el de agua caliente. */
     function porPalabras(linea, marcaBloque) {
-      const fam = FAMILIAS[familiaDe(marcaDe(norm(linea)) || marcaBloque)];
+      const marcaLinea = marcaDe(norm(linea));
+      const marca = marcaLinea || marcaBloque;
       let base = CAT;
-      if (fam) {
-        const dentro = CAT.filter((x) => fam.some((m) => norm(x.texto).indexOf(norm(m)) === 0));
-        if (dentro.length) base = dentro;
+      if (marca) {
+        // Primero la marca; si no tiene nada, su familia (sólo si la marca es
+        // la del bloque); y si es una marca que el catálogo no tiene, nada:
+        // un gabinete Tubotherm no es uno Saladillo.
+        base = CAT.filter((x) => norm(x.texto).indexOf(norm(marca)) === 0);
+        const fam = FAMILIAS[familiaDe(marca)];
+        if (!base.length && !marcaLinea && fam)
+          base = CAT.filter((x) => fam.some((m) => norm(x.texto).indexOf(norm(m)) === 0));
       }
       const con = base.map((x) => ({ texto: x.texto, p: puntaje(linea, x.texto) }))
         .filter((x) => x.p >= 0.999)
@@ -301,6 +330,9 @@
      tomar cualquier número con una "m" al lado. */
   function largoDeNota(s) {
     if (!/\bcanos?\b|\btodos?\b/.test(s)) return null;
+    // "Caño 2m todos" es una nota; "Rollos de caños de 100m según metros de
+    // casa" es un material. La nota es corta o dice "todos".
+    if (!/\btodos?\b/.test(s) && s.split(" ").length > 3) return null;
     const g = partirLargo(s);
     return g.largo;
   }
@@ -343,38 +375,69 @@
         return;
       }
 
-      const m = linea.match(/^(\d+(?:[\.,]\d+)?)\s*[\)\-\.]?\s+(.*)$/);
-      if (!m) {
-        // Sin cantidad adelante: o es el nombre de un bloque (una marca), o
-        // una nota suelta como "Caño 2m todos".
-        const mk = marcaDe(s);
-        if (mk && s.split(" ").length <= 3) {
-          marca = mk;
-          largoBloque = null;      // cada bloque tiene el suyo
-          return;
-        }
-        const lg = largoDeNota(s);
-        if (lg != null) largoBloque = lg;
-        items.push({ cant: null, texto: linea, marca: marca, nota: true,
-                     candidatos: [], elegido: null, fijaLargo: lg });
+      const agregar = (cant, textoItem) => {
+        const r = buscar(textoItem, marca, largoBloque);
+        items.push({
+          cant: cant,
+          // Sin cantidad escrita: no se inventa un 1. Entra con la cantidad
+          // vacía y el formulario pide completarla antes de enviar.
+          sinCantidad: cant == null,
+          texto: textoItem,
+          unidad: unidadDe(norm(textoItem)),
+          marca: marca,
+          nota: false,
+          candidatos: r.candidatos,
+          otraMarca: r.otraMarca,
+          porNota: !!r.porNota,
+          via: r.via,
+          // Resuelto: un solo candidato. Con varios, decide el director.
+          elegido: r.candidatos.length === 1 ? r.candidatos[0] : null
+        });
+      };
+
+      // "40 y 40 tornillos y tarugos 8": son dos materiales, uno por cantidad.
+      const doble = linea.match(/^(\d+(?:[\.,]\d+)?)\s+y\s+(\d+(?:[\.,]\d+)?)\s+(\S+)\s+y\s+(\S+)(.*)$/i);
+      if (doble) {
+        agregar(parseFloat(doble[1].replace(",", ".")), (doble[3] + doble[5]).trim());
+        agregar(parseFloat(doble[2].replace(",", ".")), (doble[4] + doble[5]).trim());
         return;
       }
 
-      const textoItem = m[2].trim();
-      const r = buscar(textoItem, marca, largoBloque);
-      items.push({
-        cant: parseFloat(m[1].replace(",", ".")),
-        texto: textoItem,
-        unidad: unidadDe(norm(textoItem)),
-        marca: marca,
-        nota: false,
-        candidatos: r.candidatos,
-        otraMarca: r.otraMarca,
-        porNota: !!r.porNota,
-        via: r.via,
-        // Resuelto: un solo candidato. Con varios, decide el director.
-        elegido: r.candidatos.length === 1 ? r.candidatos[0] : null
-      });
+      const m = linea.match(/^(\d+(?:[\.,]\d+)?)\s*[\)\-\.]?\s+(.*)$/);
+      if (!m) {
+        // Un número solo en el primer renglón es la obra: "433" es ATA-433.
+        if (!obra && !items.length && /^\d{1,5}$/.test(s)) { obra = s; return; }
+
+        // El nombre de un bloque: una marca conocida, o "Todo X" aunque X no
+        // esté en el catálogo (así "Todo Tubotherm" no busca en otras marcas).
+        const mk = marcaDe(s);
+        const todo = s.match(/^todos?\s+(?:de\s+|en\s+)?([a-z][a-z0-9]*)$/);
+        if ((mk && s.split(" ").length <= 3) || todo) {
+          marca = mk || todo[1].toUpperCase();
+          largoBloque = null;      // cada bloque tiene el suyo
+          return;
+        }
+
+        // Una nota que fija el largo de los caños del bloque.
+        const lg = largoDeNota(s);
+        if (lg != null) {
+          largoBloque = lg;
+          items.push({ cant: null, texto: linea, marca: marca, nota: true,
+                       candidatos: [], elegido: null, fijaLargo: lg });
+          return;
+        }
+
+        // Cualquier otro renglón con más de una palabra es un material al que
+        // le falta la cantidad ("Rollos de caños de 100m según metros de
+        // casa"). Antes se tomaba como nota y se perdía del pedido.
+        if (s.split(" ").length >= 2) { agregar(null, linea); return; }
+
+        items.push({ cant: null, texto: linea, marca: marca, nota: true,
+                     candidatos: [], elegido: null });
+        return;
+      }
+
+      agregar(parseFloat(m[1].replace(",", ".")), m[2].trim());
     });
 
     const reales = items.filter((i) => !i.nota);
@@ -385,6 +448,7 @@
         listos: reales.filter((i) => i.elegido).length,
         aElegir: reales.filter((i) => !i.elegido && i.candidatos.length > 1).length,
         libres: reales.filter((i) => !i.elegido && !i.candidatos.length).length,
+        sinCantidad: reales.filter((i) => i.sinCantidad).length,
         notas: items.length - reales.length
       }
     };
