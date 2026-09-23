@@ -398,6 +398,7 @@ window.PO = window.PO || {};
   }
 
   function ir(vista) {
+    estado.restaurarDonde = null;
     if (estado.vista === "detalle" && vista !== "detalle") {
       if (estado.subs.recepciones) { estado.subs.recepciones(); estado.subs.recepciones = null; }
       if (estado.subs.fotos) { estado.subs.fotos(); estado.subs.fotos = null; }
@@ -428,6 +429,14 @@ window.PO = window.PO || {};
     if (vista === "materiales") renderMateriales();
     if (vista === "perfil") renderPerfil();
     window.scrollTo(0, 0);
+
+    recordarDonde();
+    // Había versión nueva esperando a que se terminara lo que se estaba
+    // haciendo: ahora que no hay nada a medio cargar, se aplica.
+    if (window.__recargaPendiente && !hayTrabajoEnCurso()) {
+      window.__recargaPendiente = false;
+      location.reload();
+    }
   }
 
   /* ------------------------------------------------------- conectividad --- */
@@ -537,10 +546,17 @@ window.PO = window.PO || {};
     pintarVolverErp();
 
     limpiarSubs();
-    estado.subs.obras = PO.store.subObras((obras) => { estado.obras = obras; refrescarVista(); });
-    estado.subs.rubros = PO.store.subRubros((r) => { estado.rubros = r; refrescarVista(); });
+    estado.cargado = { obras: false, rubros: false, pedidos: false };
+    estado.subs.obras = PO.store.subObras((obras) => {
+      estado.obras = obras; estado.cargado.obras = true; refrescarVista(); intentarRestaurar();
+    });
+    estado.subs.rubros = PO.store.subRubros((r) => {
+      estado.rubros = r; estado.cargado.rubros = true; refrescarVista(); intentarRestaurar();
+    });
     estado.subs.proveedores = PO.store.subProveedores((p) => { estado.proveedores = p; });
-    estado.subs.pedidos = PO.store.subPedidos((p) => { estado.pedidos = p; refrescarVista(); });
+    estado.subs.pedidos = PO.store.subPedidos((p) => {
+      estado.pedidos = p; estado.cargado.pedidos = true; refrescarVista(); intentarRestaurar();
+    });
     estado.subs.notifs = PO.store.subNotificaciones(perfil.uid, (n) => {
       estado.notificaciones = n;
       renderBadgeCampana();
@@ -564,7 +580,12 @@ window.PO = window.PO || {};
       history.replaceState(null, "", location.pathname);
       abrirDetalle(pedidoUrl);
     } else {
+      // Si la app se cerró con algo a medio hacer, vuelve ahí. Se anota
+      // después de ir al Inicio: ir() cancela la vuelta cuando la persona se
+      // mueve a mano.
+      const volver = destinoAlVolver();
       ir("dashboard");
+      if (volver) { estado.restaurarDonde = volver; intentarRestaurar(); }
     }
   }
 
@@ -667,6 +688,13 @@ window.PO = window.PO || {};
     $("form-pedido").addEventListener("submit", (e) => { e.preventDefault(); guardarPedido("enviado"); });
     $("btn-guardar-borrador").addEventListener("click", () => guardarPedido("borrador"));
     $("form-pedido").addEventListener("input", autoguardar);
+    // Al minimizar o bloquear el celular se guarda en el acto: después iOS
+    // puede cerrar la app sin avisar.
+    const alSalir = () => { autoguardarYa(); if (!estado.restaurarDonde) recordarDonde(); };
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") alSalir();
+    });
+    window.addEventListener("pagehide", alSalir);
     // Si cambia obra o rubro, la lista de materiales abierta ya no aplica.
     $("pedido-obra-buscar").addEventListener("input", () => {
       sincronizarObraEscrita();
@@ -1340,7 +1368,10 @@ window.PO = window.PO || {};
         : "No hay rubros cargados. Pedile a administración que los cargue.");
     }
 
-    if (editando) {
+    if (editando && restaurarAutosave(claveEdicion(editando.id),
+        "Recuperé los cambios que no habías guardado.")) {
+      $("pedido-autosave").classList.add("oculto");
+    } else if (editando) {
       $("pedido-obra").value = editando.obraId;
       $("pedido-obra-buscar").value = editando.obraNombre || "";
       $("pedido-rubro").value = editando.rubro;
@@ -1632,6 +1663,7 @@ window.PO = window.PO || {};
     const p = document.querySelector(".mat-panel");
     if (p) p.remove();
     document.body.style.overflow = "";
+    if (estado.panelAbierto) { estado.panelAbierto = null; recordarDonde(); }
   }
 
   function abrirPanelMateriales(input) {
@@ -1961,6 +1993,8 @@ window.PO = window.PO || {};
     document.body.appendChild(panel);
     document.body.style.overflow = "hidden";
     panel.querySelector(".mat-cerrar").addEventListener("click", cerrarPegarLista);
+    estado.panelAbierto = "pegar";
+    recordarDonde();
     pasoPegar();
   }
 
@@ -1971,6 +2005,13 @@ window.PO = window.PO || {};
       '<textarea class="lista-texto" id="lista-texto" rows="12" ' +
         'placeholder="20 tira caño de 110 x 4mts&#10;6 codo a 90 de 110 m.h&#10;' +
         '8 ramal a 45 de 110 x 110&#10;…"></textarea>';
+    // Lo pegado se guarda al instante: si la app se cierra antes de leerla,
+    // al volver sigue ahí.
+    const t = $("lista-texto");
+    try { t.value = localStorage.getItem(LISTA_KEY) || ""; } catch (e) {}
+    t.addEventListener("input", () => {
+      try { localStorage.setItem(LISTA_KEY, t.value); } catch (e) {}
+    });
     const b = $("lista-accion");
     b.textContent = "Leer la lista";
     b.classList.add("con-elegidos");
@@ -1993,7 +2034,7 @@ window.PO = window.PO || {};
       como botones grandes. Es lo único que se le pide tocar. */
   function filaDuda(it, i) {
     return '<div class="rev-duda" data-i="' + i + '">' +
-      '<div class="rev-pedido"><strong>' + esc(fmtCant(it.cant)) + "</strong> " +
+      '<div class="rev-pedido"><strong>' + (it.sinCantidad ? "¿?" : esc(fmtCant(it.cant))) + "</strong> " +
         esc(it.texto) + "</div>" +
       it.candidatos.map((c, k) =>
         '<button type="button" class="rev-op" data-i="' + i + '" data-op="' + k + '">' +
@@ -2009,12 +2050,42 @@ window.PO = window.PO || {};
     const listos = r.items.filter((i) => !i.nota && i.elegido);
     const libres = r.items.filter((i) => !i.nota && !i.elegido && !i.candidatos.length);
     const notas = r.items.filter((i) => i.nota);
+    const sinCant = r.items.filter((i) => !i.nota && i.sinCantidad);
+    // Lo que ya está cargado en el formulario (una corrección, o materiales
+    // puestos a mano antes de pegar).
+    const cargados = Array.from($("items-editor").children)
+      .filter((f) => f.querySelector(".it-desc").value.trim()).length;
 
     let h = '<div class="rev-resumen">' +
       '<span class="rev-chip ok">' + listos.length + " listos</span>" +
       (dudas.length ? '<span class="rev-chip duda">' + dudas.length + " a elegir</span>" : "") +
       (libres.length ? '<span class="rev-chip libre">' + libres.length + " como texto</span>" : "") +
+      (sinCant.length ? '<span class="rev-chip duda">' + sinCant.length + " sin cantidad</span>" : "") +
       "</div>";
+
+    // Pegar sobre un pedido que ya tiene materiales: se elige qué hacer.
+    // Antes se sumaba siempre, y corregir una lista mal leída dejaba todo
+    // repetido.
+    if (cargados) {
+      h += '<div class="rev-reemplazo"><div class="rev-dato" style="border:0;padding:0 0 8px">' +
+        "El pedido ya tiene <strong>" + cargados + "</strong> " +
+        (cargados === 1 ? "material cargado" : "materiales cargados") + ".</div>" +
+        '<div class="segmentado" id="seg-reemplazo">' +
+          '<button type="button" class="seg-btn' + (r.reemplazar ? "" : " activo") +
+            '" data-valor="sumar">Sumar esta lista</button>' +
+          '<button type="button" class="seg-btn' + (r.reemplazar ? " activo" : "") +
+            '" data-valor="reemplazar">Reemplazarlos</button>' +
+        "</div></div>";
+    }
+
+    // Lo que vino sin cantidad se muestra a la vista: hay que completarlo.
+    if (sinCant.length) {
+      h += '<div class="rev-titulo">Sin cantidad — completala en el pedido</div>' +
+        '<div class="rev-sincant">' + sinCant.map((it) =>
+          '<div class="rev-fila libre"><span class="rev-cant">—</span>' +
+          '<span class="rev-nombre">' + esc(it.elegido || it.texto) + "</span></div>").join("") +
+        "</div>";
+    }
 
     if (r.obra) h += '<div class="rev-dato">Obra en la lista: <strong>' + esc(r.obra) + "</strong></div>";
     if (r.retira) h += '<div class="rev-dato">Lo retira: <strong>' + esc(r.retira) + "</strong></div>";
@@ -2029,7 +2100,7 @@ window.PO = window.PO || {};
       if (!lista.length) return "";
       return '<details class="rev-grupo"><summary>' + titulo + "</summary>" +
         lista.map((it) => '<div class="rev-fila ' + clase + '">' +
-          '<span class="rev-cant">' + esc(fmtCant(it.cant)) + "</span>" +
+          '<span class="rev-cant">' + (it.sinCantidad ? "—" : esc(fmtCant(it.cant))) + "</span>" +
           '<span class="rev-nombre">' + esc(it.elegido || it.texto) + "</span>" +
           (it.otraMarca ? '<span class="rev-marca">otra marca</span>' : "") +
           (it.porNota ? '<span class="rev-marca">por la nota</span>' : "") +
@@ -2070,8 +2141,15 @@ window.PO = window.PO || {};
     });
 
     const boton = $("lista-accion");
-    boton.textContent = "Crear el pedido · " + r.resumen.total +
-      (r.resumen.total === 1 ? " material" : " materiales");
+    const n = r.resumen.total + (r.resumen.total === 1 ? " material" : " materiales");
+    boton.textContent = !cargados ? "Crear el pedido · " + n
+      : (r.reemplazar ? "Reemplazar por estos " + n : "Sumar " + n + " al pedido");
+    const seg = $("seg-reemplazo");
+    if (seg) seg.querySelectorAll(".seg-btn").forEach((b) =>
+      b.addEventListener("click", () => {
+        revision.reemplazar = b.dataset.valor === "reemplazar";
+        pasoRevisar();
+      }));
     boton.classList.add("con-elegidos");
     boton.onclick = aplicarLista;
   }
@@ -2081,10 +2159,12 @@ window.PO = window.PO || {};
     const r = revision;
     if (!r) return;
 
-    // Si el editor está como recién abierto (una fila vacía), se reemplaza.
+    // Si se eligió reemplazar, se saca lo que había. Si el editor está como
+    // recién abierto (una fila vacía), también.
     const filas = Array.from($("items-editor").children);
     const vacio = filas.length === 1 && !filas[0].querySelector(".it-desc").value.trim();
-    if (vacio) filas[0].remove();
+    if (r.reemplazar) $("items-editor").innerHTML = "";
+    else if (vacio) filas[0].remove();
 
     let sumados = 0;
     r.items.forEach((it) => {
@@ -2092,6 +2172,7 @@ window.PO = window.PO || {};
       agregarFilaItem({
         descripcion: it.elegido || it.texto,
         cantidad: it.cant,
+        sinCantidad: !!it.sinCantidad,
         unidad: it.unidad || "un."
       });
       sumados++;
@@ -2101,6 +2182,9 @@ window.PO = window.PO || {};
     if (r.obra && !$("pedido-obra").value) {
       $("pedido-obra-buscar").value = r.obra;
       sincronizarObraEscrita();
+      // Si "433" encontró su obra, se escribe el nombre entero (ATA-433).
+      const o = estado.obras.find((x) => x.id === $("pedido-obra").value);
+      if (o) $("pedido-obra-buscar").value = o.nombre;
     }
     // Quién lo retira va en las observaciones: es lo que administración
     // necesita saber para avisarle al proveedor.
@@ -2112,9 +2196,12 @@ window.PO = window.PO || {};
       }
     }
 
+    try { localStorage.removeItem(LISTA_KEY); } catch (e) {}
     cerrarPegarLista();
     autoguardar();
-    toast(sumados + (sumados === 1 ? " material cargado." : " materiales cargados."));
+    const faltan = r.items.filter((i) => !i.nota && i.sinCantidad).length;
+    toast(sumados + (sumados === 1 ? " material cargado." : " materiales cargados.") +
+      (faltan ? " Completá la cantidad de " + faltan + " (quedaron vacías)." : ""));
   }
 
   function agregarFilaItem(it) {
@@ -2132,7 +2219,9 @@ window.PO = window.PO || {};
         esc(it ? it.descripcion : "") + '" />' +
       '<input class="input it-cant" type="text" inputmode="decimal" ' +
         'aria-label="Cantidad" placeholder="Cant." value="' +
-        esc(fmtCant(it && it.cantidad ? it.cantidad : 1)) + '" />' +
+        // Vacía si la lista no traía cantidad: el formulario la pide antes
+        // de enviar, en vez de mandar un 1 inventado.
+        (it && it.sinCantidad ? "" : esc(fmtCant(it && it.cantidad ? it.cantidad : 1))) + '" />' +
       '<select class="input it-unidad" aria-label="Unidad">' +
         unidades.map((u) =>
           '<option value="' + esc(u) + '"' + (clave(u) === clave(unidadActual) ? " selected" : "") +
@@ -2173,13 +2262,113 @@ window.PO = window.PO || {};
     return { items };
   }
 
+  /* --- Volver a donde estaba -------------------------------------------
+     iOS cierra las PWA en segundo plano cuando necesita memoria, y la app se
+     actualiza sola cuando hay versión nueva. En los dos casos arrancaba de
+     cero en el Inicio y lo que estaba a medio cargar parecía perdido. Ahora
+     se anota en qué pantalla estaba y, al reabrir, vuelve ahí. --- */
+
+  const DONDE_KEY = "po-donde";
+  const LISTA_KEY = "po-lista-pegada";
+  const claveEdicion = (id) => "po-autosave-edicion-" + id;
+
+  function recordarDonde() {
+    try {
+      localStorage.setItem(DONDE_KEY, JSON.stringify({
+        uid: estado.usuario ? estado.usuario.uid : null,
+        vista: estado.vista,
+        pedidoId: estado.vista === "detalle" ? estado.pedidoAbiertoId : null,
+        edicionId: estado.vista === "nuevo" ? (estado.edicionBorradorId || null) : null,
+        panel: estado.panelAbierto || null,
+        ts: Date.now()
+      }));
+    } catch (e) { /* sin almacenamiento: se arranca en el Inicio, como antes */ }
+  }
+
+  /** ¿Quedó algo cargado bajo esa clave? */
+  function hayGuardado(k) {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(k) || "null"); } catch (e) {}
+    return !!(d && ((d.items || []).some((i) => (i.descripcion || "").trim()) ||
+      d.obraId || d.observaciones || d.detalleRubro));
+  }
+
+  /** A dónde conviene volver al abrir la app, o null para el Inicio. */
+  function destinoAlVolver() {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(DONDE_KEY) || "null"); } catch (e) {}
+    if (!d || !d.vista || d.vista === "dashboard") return null;
+    // Otro usuario en el mismo celular: no se le abre lo del anterior.
+    if (d.uid && estado.usuario && d.uid !== estado.usuario.uid) return null;
+    const reciente = Date.now() - (d.ts || 0) < 2 * 60 * 60 * 1000;
+    if (d.vista === "nuevo") {
+      // Un pedido a medio cargar se retoma aunque haya pasado el día: es
+      // trabajo sin terminar. Un formulario vacío, sólo si fue hace poco.
+      const guardado = hayGuardado(d.edicionId ? claveEdicion(d.edicionId) : AUTOSAVE_KEY);
+      let pegado = false;
+      try { pegado = !!(localStorage.getItem(LISTA_KEY) || "").trim(); } catch (e) {}
+      return (guardado || pegado || reciente) ? d : null;
+    }
+    return reciente ? d : null;
+  }
+
+  /** Vuelve a la pantalla anotada, pero recién cuando llegaron las obras, los
+      rubros y los pedidos: el formulario se arma con esas listas y, si se
+      restaura antes, la obra queda sin elegir. */
+  function intentarRestaurar() {
+    const d = estado.restaurarDonde;
+    if (!d) return;
+    const c = estado.cargado || {};
+    if (!c.obras || !c.rubros || !c.pedidos) return;
+    estado.restaurarDonde = null;
+    if (estado.vista !== "dashboard") return;   // mientras tanto se movió a mano
+
+    if (d.vista === "nuevo") {
+      if (d.edicionId) {
+        const p = estado.pedidos.find((x) => x.id === d.edicionId);
+        // Si mientras tanto administración lo compró, ya no se corrige.
+        if (!p || !["borrador", "enviado"].includes(p.estado)) return;
+        if (p.solicitanteUid !== estado.usuario.uid) return;
+        estado.edicionBorradorId = d.edicionId;
+      }
+      ir("nuevo");
+      if (d.panel === "pegar" && !d.edicionId) abrirPegarLista();
+      return;
+    }
+    if (d.vista === "detalle") {
+      if (d.pedidoId && estado.pedidos.some((x) => x.id === d.pedidoId)) abrirDetalle(d.pedidoId);
+      return;
+    }
+    if (d.vista === "gestion" && !esAdmin()) return;
+    if (["listado", "gestion", "materiales", "perfil"].includes(d.vista)) ir(d.vista);
+  }
+
+  /** ¿Hay algo que una recarga se llevaría puesto? */
+  function hayTrabajoEnCurso() {
+    if (estado.vista === "nuevo") return true;
+    if (document.querySelector(".mat-panel")) return true;
+    return Array.from(document.querySelectorAll(".modal"))
+      .some((m) => !m.classList.contains("oculto"));
+  }
+
   /* --- Autoguardado en localStorage (resiliencia en obra) --- */
 
   let autosaveTimer = null;
   function autoguardar() {
-    if (estado.vista !== "nuevo" || estado.edicionBorradorId) return;
+    if (estado.vista !== "nuevo") return;
     clearTimeout(autosaveTimer);
-    autosaveTimer = setTimeout(() => {
+    autosaveTimer = setTimeout(autoguardarYa, 400);
+  }
+
+  /** Guarda en el acto. Se llama al minimizar: iOS congela la app enseguida
+      y lo tipeado en los últimos 400 ms no llegaba a guardarse. Cada
+      corrección o borrador va en su propia clave, para no pisar el pedido
+      nuevo que pudiera haber a medio cargar. */
+  function autoguardarYa() {
+    clearTimeout(autosaveTimer);
+    if (estado.vista !== "nuevo") return;
+    const k = estado.edicionBorradorId ? claveEdicion(estado.edicionBorradorId) : AUTOSAVE_KEY;
+    {
       try {
         const datos = {
           obraId: $("pedido-obra").value,
@@ -2194,14 +2383,16 @@ window.PO = window.PO || {};
             unidad: f.querySelector(".it-unidad").value
           }))
         };
-        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(datos));
+        localStorage.setItem(k, JSON.stringify(datos));
       } catch (e) { /* sin espacio: no es crítico */ }
-    }, 400);
+    }
   }
 
-  function restaurarAutosave() {
+  function restaurarAutosave(claveGuardado, aviso) {
+    const k = claveGuardado || AUTOSAVE_KEY;
+    const texto = aviso || "Se recuperó un pedido que había quedado sin enviar.";
     let datos = null;
-    try { datos = JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || "null"); } catch (e) {}
+    try { datos = JSON.parse(localStorage.getItem(k) || "null"); } catch (e) {}
     if (!datos) return false;
     const tieneAlgo = (datos.items || []).some((i) => (i.descripcion || "").trim()) ||
       datos.obraId || datos.observaciones || datos.detalleRubro;
@@ -2213,7 +2404,7 @@ window.PO = window.PO || {};
     setEntregaPedido((datos.entrega && datos.entrega.tipo) || "obra");
     $("pedido-autorizado").value = (datos.entrega && datos.entrega.autorizado) || "";
     if (cargarDetalleRubro(datos.detalleRubro)) {
-      toast("Se recuperó un pedido que había quedado sin enviar.");
+      toast(texto);
       return true;
     }
     (datos.items || []).forEach((i) => {
@@ -2222,14 +2413,21 @@ window.PO = window.PO || {};
       }
     });
     if ($("items-editor").children.length) {
-      toast("Se recuperó un pedido que había quedado sin enviar.");
+      toast(texto);
       return true;
     }
     return false;
   }
 
   function limpiarAutosave() {
-    try { localStorage.removeItem(AUTOSAVE_KEY); } catch (e) {}
+    try {
+      localStorage.removeItem(AUTOSAVE_KEY);
+      localStorage.removeItem(LISTA_KEY);
+    } catch (e) {}
+  }
+
+  function limpiarAutosaveEdicion(id) {
+    try { localStorage.removeItem(claveEdicion(id)); } catch (e) {}
   }
 
   /* --- Guardar (borrador o enviado) --- */
@@ -2257,6 +2455,8 @@ window.PO = window.PO || {};
   }
 
   async function guardarPedido(modo) {
+    // Si el envío falla por la señal, lo último tipeado tiene que estar a salvo.
+    autoguardarYa();
     mostrarError("pedido-error", "");
     const u = estado.usuario;
 
@@ -2310,6 +2510,7 @@ window.PO = window.PO || {};
             }])
           });
           PO.store.notificarTransicion("editado", { ...p, ...campos, id: p.id }, u);
+          limpiarAutosaveEdicion(p.id);
           estado.edicionBorradorId = null;
           toast("Pedido corregido. Administración ya está avisada.");
           ir("detalle");
@@ -2318,6 +2519,7 @@ window.PO = window.PO || {};
 
         if (modo === "borrador") {
           await PO.store.actualizarPedido(p.id, campos);
+          limpiarAutosaveEdicion(p.id);
           toast("Borrador actualizado.");
           ir("detalle");
         } else {
@@ -2328,6 +2530,7 @@ window.PO = window.PO || {};
           PO.store.notificarTransicion("enviado",
             { ...p, ...campos, id: p.id, numero, estado: "enviado" }, u);
           toast("Pedido " + numero + " enviado.");
+          limpiarAutosaveEdicion(p.id);
           estado.edicionBorradorId = null;
           ir("listado");
         }
@@ -3807,6 +4010,9 @@ window.PO = window.PO || {};
     agregarFilaItem,
     abrirPegarLista,
     leerLoPegado,
+    hayTrabajoEnCurso,
+    intentarRestaurar,
+    destinoAlVolver,
     abrirFaltantes,
     guardarFaltantes,
     recepcionCompleta,

@@ -580,6 +580,11 @@
       var recargando = false;
       navigator.serviceWorker.addEventListener("controllerchange", function () {
         if (recargando) return;
+        // Con un pedido a medio cargar (o un panel o una ventana abierta) no
+        // se recarga: se aplica cuando se sale de ahí (ver ir() en app.js).
+        var ocupado = false;
+        try { ocupado = !!(window.PO && PO.ui && PO.ui.hayTrabajoEnCurso && PO.ui.hayTrabajoEnCurso()); } catch (e) {}
+        if (ocupado) { window.__recargaPendiente = true; return; }
         recargando = true;
         location.reload();
       });
