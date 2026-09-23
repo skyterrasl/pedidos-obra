@@ -2743,7 +2743,9 @@ window.PO = window.PO || {};
 
     const entrega = p.entrega || {};
     if (entrega.tipo === "retira") {
-      lineas.push("Lo pasamos a retirar nosotros" +
+      // La obra va siempre, aunque se retire: el proveedor la necesita para
+      // saber a qué obra cargarlo, y era la única rama que no la nombraba.
+      lineas.push("Es para la obra " + p.obraNombre + ". Lo pasamos a retirar nosotros" +
         (entrega.autorizado ? " (retira " + entrega.autorizado + ")" : "") + ".");
     } else {
       lineas.push("Entregar en la obra " + p.obraNombre +
