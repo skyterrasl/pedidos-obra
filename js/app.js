@@ -1319,6 +1319,11 @@ window.PO = window.PO || {};
       : (corrigiendo ? "Corregir " + (editando.numero || "el pedido") : "Editar borrador");
     $("btn-enviar-pedido").textContent = corrigiendo ? "Guardar los cambios" : "Enviar pedido";
     $("btn-guardar-borrador").classList.toggle("oculto", !!corrigiendo);
+    // Corrigiendo, el rubro queda fijo: el número lleva su serie (P-MG-…). La
+    // obra la puede cambiar sólo quien corrige todo; al director se le traba,
+    // porque antes se podía tocar y el guardado la ignoraba sin avisar.
+    $("pedido-rubro").disabled = !!corrigiendo;
+    $("pedido-obra-buscar").disabled = !!corrigiendo && !puedeCorregirTodo();
 
     // Todas las obras de la lista se pueden pedir. Antes se ofrecían sólo las
     // activas y por comenzar, y el estado lo manda Gestión: una obra que el
@@ -2326,9 +2331,11 @@ window.PO = window.PO || {};
     if (d.vista === "nuevo") {
       if (d.edicionId) {
         const p = estado.pedidos.find((x) => x.id === d.edicionId);
-        // Si mientras tanto administración lo compró, ya no se corrige.
-        if (!p || !["borrador", "enviado"].includes(p.estado)) return;
-        if (p.solicitanteUid !== estado.usuario.uid) return;
+        // Si mientras tanto dejó de poder corregirse (se compró, se cerró),
+        // no se vuelve a la corrección.
+        if (!p) return;
+        const borradorMio = p.estado === "borrador" && p.solicitanteUid === estado.usuario.uid;
+        if (!borradorMio && !puedeCorregir(p)) return;
         estado.edicionBorradorId = d.edicionId;
       }
       ir("nuevo");
@@ -2432,6 +2439,23 @@ window.PO = window.PO || {};
 
   /* --- Guardar (borrador o enviado) --- */
 
+  /* Quiénes corrigen cualquier pedido abierto, no sólo el propio: compras
+     (Martín, Pame) y dirección (Nico, Mica). Se mira el rol del ERP porque en
+     Pedidos también son administración Meli y Maca, que no compran. */
+  const CORRIGEN_TODO = ["direccion", "compras"];
+
+  function puedeCorregirTodo() {
+    return esAdmin() && CORRIGEN_TODO.includes(estado.usuario && estado.usuario.rolErp);
+  }
+
+  /** ¿Puede este usuario corregir este pedido ahora? El que lo pidió, mientras
+      no se compró; compras y dirección, cualquiera que siga abierto. */
+  function puedeCorregir(p) {
+    if (!p || !estado.usuario) return false;
+    if (p.estado === "enviado" && p.solicitanteUid === estado.usuario.uid) return true;
+    return puedeCorregirTodo() && ABIERTOS.includes(p.estado);
+  }
+
   /** Compara dos listas de materiales y devuelve los cambios en criollo, para
       que en el historial se lea qué pasó sin tener que adivinar. */
   function resumirCambios(antes, despues) {
@@ -2491,7 +2515,23 @@ window.PO = window.PO || {};
         // estado. La obra y el rubro no se tocan — el número lleva la serie
         // del rubro y cambiarlo lo dejaría inconsistente.
         if (p.estado !== "borrador") {
-          const cambios = resumirCambios(p.items, res.items);
+          // Lo que ya se recibió y lo marcado como faltante no se pierde: cada
+          // material que sigue estando conserva lo suyo. Antes la lista volvía
+          // con todo en 0, y corregir un pedido con entrega parcial borraba
+          // lo recibido.
+          const previos = new Map((p.items || []).map((i) => [clave(i.descripcion), i]));
+          const items = res.items.map((it) => {
+            const v = previos.get(clave(it.descripcion));
+            if (!v) return it;
+            const out = Object.assign({}, it, { recibido: Number(v.recibido || 0) });
+            if (v.falta) out.falta = v.falta;
+            return out;
+          });
+
+          const cambios = resumirCambios(p.items, items);
+          // Mudar el pedido de obra: sólo quien corrige todo.
+          const cambiaObra = puedeCorregirTodo() && campos.obraId && campos.obraId !== p.obraId;
+          if (cambiaObra) cambios.unshift("Obra: " + (p.obraNombre || "") + " → " + campos.obraNombre);
           const mismaObs = campos.observaciones === (p.observaciones || "");
           if (!cambios.length && mismaObs) {
             toast("No cambiaste nada.");
@@ -2499,20 +2539,29 @@ window.PO = window.PO || {};
             ir("detalle");
             return;
           }
-          await PO.store.actualizarPedido(p.id, {
+          const guardar = {
             entrega: campos.entrega,
             detalleRubro: campos.detalleRubro,
             observaciones: campos.observaciones,
-            items: campos.items,
+            items: items,
             historial: (p.historial || []).concat([{
               accion: "editado", usuarioNombre: u.nombre, ts: ahora,
               nota: cambios.length ? cambios.join("\n") : "Cambió la observación."
             }])
-          });
-          PO.store.notificarTransicion("editado", { ...p, ...campos, id: p.id }, u);
+          };
+          if (cambiaObra) { guardar.obraId = campos.obraId; guardar.obraNombre = campos.obraNombre; }
+          // Si al corregir queda recibido todo lo que sigue siendo del pedido
+          // (se sacó lo que faltaba, o se bajó la cantidad), se cierra.
+          if (["pedido_proveedor", "entrega_parcial"].includes(p.estado) && recepcionCompleta(items)) {
+            guardar.estado = "entregado";
+          }
+          await PO.store.actualizarPedido(p.id, guardar);
+          PO.store.notificarTransicion("editado", { ...p, ...guardar, id: p.id }, u);
           limpiarAutosaveEdicion(p.id);
           estado.edicionBorradorId = null;
-          toast("Pedido corregido. Administración ya está avisada.");
+          toast(p.solicitanteUid === u.uid
+            ? (esAdmin() ? "Pedido corregido." : "Pedido corregido. Administración ya está avisada.")
+            : "Pedido corregido. " + (p.solicitanteNombre || "El que lo pidió") + " ya está avisado.");
           ir("detalle");
           return;
         }
@@ -2815,9 +2864,9 @@ window.PO = window.PO || {};
 
     /* Acciones según rol + estado */
     const botones = [];
-    // Mientras administración no lo compró, el que lo pidió lo puede
-    // corregir. Después no: el proveedor ya tiene la lista.
-    if (p.estado === "enviado" && soySolicitante) {
+    // El que lo pidió lo corrige mientras no se compró. Compras y dirección,
+    // cualquiera que siga abierto (ver puedeCorregir).
+    if (puedeCorregir(p)) {
       botones.push('<button type="button" class="btn btn-ghost" id="btn-editar-pedido">' +
         "Corregir el pedido</button>");
     }
@@ -2945,11 +2994,26 @@ window.PO = window.PO || {};
     if (p.fechaNecesaria) lineas.push("Lo necesitamos para el " + fmtFecha(p.fechaNecesaria) + ".");
 
     const entrega = p.entrega || {};
-    if (entrega.tipo === "retira") {
+    // Una vez comprado manda lo que anotó administración al pasarlo al
+    // proveedor, que es lo mismo que muestra el detalle. Antes el mensaje
+    // miraba sólo lo que pidió el director: si él no puso nombre y compras sí
+    // (P-MG-0016), salía sin nombre; y si compras lo cambió a retiro
+    // (P-MG-0013), el mensaje seguía diciendo "entregar en la obra".
+    const prov = p.proveedor || {};
+    const comprado = !!prov.nombre;
+    const esRetiro = comprado ? !!prov.retira : entrega.tipo === "retira";
+    // "SIN ACLARACION", "-" o "?" son rellenos del campo obligatorio, no nombres.
+    const nombreUtil = (n) => {
+      const t = String(n || "").trim();
+      return /^(sin aclaraci[oó]n|sin nombre|a definir|-+|\?+|x+)$/i.test(t) ? "" : t;
+    };
+    const quienRetira = nombreUtil(comprado ? prov.retira : entrega.autorizado) ||
+      nombreUtil(entrega.autorizado);
+    if (esRetiro) {
       // La obra va siempre, aunque se retire: el proveedor la necesita para
       // saber a qué obra cargarlo, y era la única rama que no la nombraba.
-      lineas.push("Es para la obra " + p.obraNombre + ". Lo pasamos a retirar nosotros" +
-        (entrega.autorizado ? " (retira " + entrega.autorizado + ")" : "") + ".");
+      lineas.push("Es para la obra " + p.obraNombre + ". " +
+        (quienRetira ? "Lo pasa a retirar " + quienRetira + "." : "Lo pasamos a retirar nosotros."));
     } else {
       lineas.push("Entregar en la obra " + p.obraNombre +
         (obra && obra.direccion ? " — " + obra.direccion : "") + ".");
@@ -4010,6 +4074,8 @@ window.PO = window.PO || {};
     agregarFilaItem,
     abrirPegarLista,
     leerLoPegado,
+    puedeCorregir,
+    puedeCorregirTodo,
     hayTrabajoEnCurso,
     intentarRestaurar,
     destinoAlVolver,

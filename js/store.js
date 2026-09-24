@@ -308,8 +308,10 @@ PO.store = {
         return (pedido.prioridad === "urgente" ? "URGENTE · " : "") +
           "Nuevo pedido " + num + " · " + obra + " (" + pedido.rubro + ") de " + pedido.solicitanteNombre;
       case "editado":
-        return num + " CAMBIÓ · " + obra + " — lo corrigió " + actor.nombre +
-          ". Fijate la lista antes de comprar.";
+        return actor.rol === "admin"
+          ? actor.nombre + " corrigió tu pedido " + num + " · " + obra + ". Fijate cómo quedó."
+          : num + " CAMBIÓ · " + obra + " — lo corrigió " + actor.nombre +
+            ". Fijate la lista antes de comprar.";
       case "pedido_proveedor":
         return num + " pedido a " + ((pedido.proveedor && pedido.proveedor.nombre) || "proveedor") +
           ((pedido.proveedor && pedido.proveedor.fechaEstimada) ? " · llega " + pedido.proveedor.fechaEstimada : "");
@@ -337,9 +339,11 @@ PO.store = {
       Fire-and-forget: no bloquea la UI, los errores solo se loguean. */
   async notificarTransicion(evento, pedido, actor) {
     try {
-      const notificaContraparte = ["cancelado", "reclamo"]; // avisa al "otro lado" de quien actuó
+      // Avisa al "otro lado" de quien actuó. Una corrección del director le
+      // llega a administración; una de compras o dirección, al que lo pidió.
+      const notificaContraparte = ["cancelado", "reclamo", "editado"];
       const haciaAdmins =
-        ["enviado", "editado", "entrega_parcial", "entregado"].includes(evento) ||
+        ["enviado", "entrega_parcial", "entregado"].includes(evento) ||
         (notificaContraparte.includes(evento) && actor.rol !== "admin");
 
       let destinatarios = [];
