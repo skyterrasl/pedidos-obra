@@ -307,6 +307,10 @@ PO.store = {
       case "enviado":
         return (pedido.prioridad === "urgente" ? "URGENTE · " : "") +
           "Nuevo pedido " + num + " · " + obra + " (" + pedido.rubro + ") de " + pedido.solicitanteNombre;
+      case "para_retirar":
+        return num + " está PARA RETIRAR en " +
+          ((pedido.proveedor && pedido.proveedor.nombre) || "el proveedor") + " · " + obra +
+          (pedido.retiraNombre ? " · lo retira " + pedido.retiraNombre : "") + ".";
       case "editado":
         return actor.rol === "admin"
           ? actor.nombre + " corrigió tu pedido " + num + " · " + obra + ". Fijate cómo quedó."
@@ -370,6 +374,7 @@ PO.store = {
       const toggleAviso = {
         enviado: "pedido_nuevo",
         pedido_proveedor: "pedido_proveedor",
+        para_retirar: "pedido_proveedor",
         entrega_parcial: "recepcion",
         entregado: "recepcion"
       }[evento] || null;

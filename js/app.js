@@ -122,6 +122,8 @@ window.PO = window.PO || {};
     reclamo:          "Reclamo enviado",
     falta:            "El proveedor no lo tenía",
     editado:          "Pedido corregido",
+    para_retirar:     "Listo para retirar",
+    para_retirar_no:  "Todavía no estaba para retirar",
     recibido:         "Recibido por administración" // histórico: el paso se eliminó
   };
 
@@ -301,10 +303,60 @@ window.PO = window.PO || {};
     });
   }
 
+  /* "Para retirar" es una etapa de "en el proveedor", no un estado propio:
+     es una marca en el pedido (quién la puso y cuándo). Se ve como un estado
+     más —en verde— pero por debajo el pedido sigue en pedido_proveedor o
+     entrega_parcial, así la recepción, el reclamo y las reglas de Firestore
+     no cambian, y la migración al módulo del ERP no encuentra un estado raro.
+     Registrar la recepción la consume. */
+  function paraRetirar(p) {
+    return !!(p && p.paraRetirar && ["pedido_proveedor", "entrega_parcial"].includes(p.estado));
+  }
+
+  /** El estado como se muestra: el guardado, o "para_retirar" si está listo. */
+  function estadoVisible(p) {
+    return paraRetirar(p) ? "para_retirar" : p.estado;
+  }
+
+  const NOMBRE_ESTADO = Object.assign({}, ESTADOS, { para_retirar: "Para retirar" });
+
+  /** Los estados en el orden en que avanza un pedido, con la etapa adentro. */
+  const ORDEN_ESTADOS = ["borrador", "enviado", "pedido_proveedor", "para_retirar",
+    "entrega_parcial", "entregado", "cancelado"];
+
+  function badgeEstado(p) {
+    const k = estadoVisible(p);
+    return '<span class="badge badge-' + esc(k) + '">' + esc(NOMBRE_ESTADO[k] || k) + "</span>";
+  }
+
+  /* "SIN ACLARACION", "-" o "?" son rellenos del campo obligatorio de quién
+     retira, no nombres. */
+  function nombreUtil(n) {
+    const t = String(n || "").trim();
+    return /^(sin aclaraci[oó]n|sin nombre|a definir|-+|\?+|x+)$/i.test(t) ? "" : t;
+  }
+
+  /** ¿Se retira? Una vez comprado manda lo que anotó administración al pasarlo
+      al proveedor (lo mismo que muestra el detalle); antes, lo que pidió el
+      director. */
+  function esRetiroPedido(p) {
+    const prov = p.proveedor || {};
+    return prov.nombre ? !!prov.retira : (p.entrega || {}).tipo === "retira";
+  }
+
+  /** Quién lo va a buscar, si se sabe. */
+  function quienRetira(p) {
+    const prov = p.proveedor || {};
+    const entrega = p.entrega || {};
+    return nombreUtil(prov.nombre ? prov.retira : entrega.autorizado) || nombreUtil(entrega.autorizado);
+  }
+
+  /* Un pedido listo para retirar no está atrasado por el proveedor —ya
+     cumplió— ni "en camino": está esperando que alguien lo vaya a buscar. */
   function esAtrasado(p) {
     return !!(p.proveedor && p.proveedor.fechaEstimada &&
       p.proveedor.fechaEstimada < hoyISO() &&
-      ["pedido_proveedor", "entrega_parcial"].includes(p.estado));
+      ["pedido_proveedor", "entrega_parcial"].includes(p.estado) && !paraRetirar(p));
   }
 
   /* Días que el director espera antes de poder reclamar. Tres es lo que en
@@ -338,6 +390,7 @@ window.PO = window.PO || {};
 
   function puedeReclamar(p) {
     if (!ABIERTOS.includes(p.estado)) return false;
+    if (paraRetirar(p)) return false;      // ya está listo: hay que ir a buscarlo
     if (faltaEstaAvisada(p)) return false;
     if (esAdmin()) return ["pedido_proveedor", "entrega_parcial"].includes(p.estado);
     const mio = p.solicitanteUid === estado.usuario.uid || directorDeObra(p);
@@ -346,7 +399,8 @@ window.PO = window.PO || {};
 
   /** Ya comprado y todavía dentro de la fecha prometida. */
   function enCamino(p) {
-    return ["pedido_proveedor", "entrega_parcial"].includes(p.estado) && !esAtrasado(p);
+    return ["pedido_proveedor", "entrega_parcial"].includes(p.estado) && !esAtrasado(p) &&
+      !paraRetirar(p);
   }
 
   /* Motivos por los que un material no llega con el resto del pedido. */
@@ -904,12 +958,15 @@ window.PO = window.PO || {};
     const atrasados = base.filter(esAtrasado);
     const sinComprar = base.filter((p) => p.estado === "enviado");
     const enCam = base.filter(enCamino);
+    // Listo en el corralón, esperando que alguien lo vaya a buscar.
+    const aRetirar = base.filter(paraRetirar);
 
     if (base.length) {
       html += '<div class="titulares">' +
         titular("atrasados", atrasados.length, "Atrasados", "peligro") +
         titular("enviado", sinComprar.length, "Sin comprar", sinComprar.length ? "alerta" : "") +
         titular("en_camino", enCam.length, "En camino", "") +
+        titular("para_retirar", aRetirar.length, "Para retirar", "verde") +
         "</div>";
     }
 
@@ -943,10 +1000,10 @@ window.PO = window.PO || {};
 
     // Detalle por estado: es el índice del listado, va al final.
     html += '<div class="dash-grid">' +
-      Object.keys(ESTADOS).map((k) => {
-        const n = base.filter((p) => p.estado === k).length;
+      ORDEN_ESTADOS.map((k) => {
+        const n = base.filter((p) => estadoVisible(p) === k).length;
         return '<button type="button" class="dash-card" data-estado="' + k + '">' +
-          '<span class="badge badge-' + k + '">' + ESTADOS[k] + "</span>" +
+          '<span class="badge badge-' + k + '">' + NOMBRE_ESTADO[k] + "</span>" +
           '<div class="d-num">' + n + "</div>" +
           '<div class="d-etiqueta">' + (k === "borrador" ? "míos, sin enviar" : "pedidos") + "</div>" +
         "</button>";
@@ -1229,7 +1286,7 @@ window.PO = window.PO || {};
     if (estado.filtros.estado === "atrasados") return lista.filter(esAtrasado);
     if (estado.filtros.estado === "en_camino") return lista.filter(enCamino);
     if (estado.filtros.estado !== "todos") {
-      lista = lista.filter((p) => p.estado === estado.filtros.estado);
+      lista = lista.filter((p) => estadoVisible(p) === estado.filtros.estado);
     }
     return lista;
   }
@@ -1240,14 +1297,14 @@ window.PO = window.PO || {};
   function renderFiltroEstado() {
     const base = pedidosFiltradosBase();
     const conteo = {};
-    base.forEach((p) => { conteo[p.estado] = (conteo[p.estado] || 0) + 1; });
+    base.forEach((p) => { const k = estadoVisible(p); conteo[k] = (conteo[k] || 0) + 1; });
 
     const nAtrasados = base.filter(esAtrasado).length;
     const nEnCamino = base.filter(enCamino).length;
     const opciones = [["todos", "Todos los estados", base.length]]
       .concat(nAtrasados ? [["atrasados", "⚠ Atrasados", nAtrasados]] : [])
       .concat(nEnCamino ? [["en_camino", "En camino", nEnCamino]] : [])
-      .concat(Object.keys(ESTADOS).map((k) => [k, ESTADOS[k], conteo[k] || 0]));
+      .concat(ORDEN_ESTADOS.map((k) => [k, NOMBRE_ESTADO[k], conteo[k] || 0]));
 
     const sel = $("filtro-estado");
     sel.innerHTML = opciones.map(([clave, etiqueta, num]) =>
@@ -1288,7 +1345,7 @@ window.PO = window.PO || {};
           '<span class="pedido-numero">' + esc(p.numero || "Borrador") + "</span>" +
           (esAtrasado(p) ? '<span class="tag-atrasado">ATRASADO</span>' : "") +
         "</div>" +
-          '<span class="badge badge-' + esc(p.estado) + '">' + (ESTADOS[p.estado] || esc(p.estado)) + "</span>" +
+          badgeEstado(p) +
         "</div>" +
         '<div class="pedido-obra">' + esc(p.obraNombre) + "</div>" +
         '<div class="pedido-rubro">' + esc(p.rubro) + "</div>" +
@@ -1818,6 +1875,34 @@ window.PO = window.PO || {};
   }
 
 
+
+  /* --- Para retirar ------------------------------------------------------ */
+
+  async function marcarParaRetirar(p, listo) {
+    const u = estado.usuario;
+    const ahora = PO.fb.tsAhora();
+    const quien = quienRetira(p);
+    const donde = (p.proveedor && p.proveedor.nombre) || "el proveedor";
+    try {
+      await PO.store.actualizarPedido(p.id, {
+        paraRetirar: listo ? { ts: ahora, usuarioNombre: u.nombre } : null,
+        historial: (p.historial || []).concat([{
+          accion: listo ? "para_retirar" : "para_retirar_no",
+          usuarioNombre: u.nombre, ts: ahora,
+          nota: listo ? "Listo en " + donde + (quien ? " · lo retira " + quien : "") + "." : ""
+        }])
+      });
+      if (listo) {
+        PO.store.notificarTransicion("para_retirar",
+          Object.assign({}, p, { retiraNombre: quien }), u);
+      }
+      toast(listo
+        ? "Marcado para retirar. " + (p.solicitanteNombre || "El que lo pidió") + " ya está avisado."
+        : "Volvió a “en el proveedor”.");
+    } catch (e) {
+      toast("No se pudo guardar: " + (e.message || e));
+    }
+  }
 
   /* --- Lo que el proveedor no tiene --------------------------------------
      El corralón avisa al cotizar, o aparece al descargar el camión. En los
@@ -2757,7 +2842,7 @@ window.PO = window.PO || {};
       '<span class="pedido-numero">' + esc(p.numero || "Borrador") + "</span>" +
       (atrasado ? '<span class="tag-atrasado">ATRASADO</span>' : "") +
       "</div>" +
-      '<span class="badge badge-' + esc(p.estado) + '">' + (ESTADOS[p.estado] || esc(p.estado)) + "</span>" +
+      badgeEstado(p) +
       "</div>";
 
     /* Datos generales */
@@ -2783,6 +2868,11 @@ window.PO = window.PO || {};
         dato("Proveedor", esc(p.proveedor.nombre)) +
         dato("Entrega estimada", (atrasado ? "<span style='color:var(--peligro)'>" : "<span>") +
           fmtFecha(p.proveedor.fechaEstimada) + "</span>") +
+          (paraRetirar(p)
+            ? dato("Estado", '<span class="badge badge-para_retirar">Para retirar</span> ' +
+                esc(haceCuanto(p.paraRetirar.ts)) +
+                (p.paraRetirar.usuarioNombre ? " · avisó " + esc(p.paraRetirar.usuarioNombre) : ""))
+            : "") +
           dato("Entrega", p.proveedor.retira
           ? "<span style='color:var(--alerta)'>Retira " + esc(p.proveedor.retira) + "</span>"
           : "En obra") +
@@ -2882,6 +2972,14 @@ window.PO = window.PO || {};
       // quién se le compró y para cuándo (de esa fecha salen los atrasados).
       botones.push('<button type="button" class="btn btn-primario" id="btn-pedir-proveedor">Ya lo pedí: cargar proveedor y fecha</button>');
     }
+    // El corralón avisó que ya está: compras lo marca y el director se entera
+    // de que hay que ir a buscarlo. Si se marcó de más, se deshace.
+    if (soyAdmin && ["pedido_proveedor", "entrega_parcial"].includes(p.estado) &&
+        itemsVivos(p).some(pendienteDeRecibir)) {
+      botones.push(paraRetirar(p)
+        ? '<button type="button" class="btn btn-ghost" id="btn-no-retirar">Todavía no está para retirar</button>'
+        : '<button type="button" class="btn btn-verde" id="btn-para-retirar">Está para retirar</button>');
+    }
     if ((soyAdmin || soyDirectorObra) && ["pedido_proveedor", "entrega_parcial"].includes(p.estado)) {
       botones.push('<button type="button" class="btn btn-primario" id="btn-recepcion">Registrar recepción</button>');
     }
@@ -2930,6 +3028,8 @@ window.PO = window.PO || {};
     });
     on("btn-pedir-proveedor", abrirModalProveedor);
     on("btn-recepcion", abrirModalRecepcion);
+    on("btn-para-retirar", () => marcarParaRetirar(p, true));
+    on("btn-no-retirar", () => marcarParaRetirar(p, false));
     on("btn-falta", () => abrirFaltantes(p));
     on("btn-reclamar", async (e) => {
       e.target.disabled = true;
@@ -2999,21 +3099,12 @@ window.PO = window.PO || {};
     // miraba sólo lo que pidió el director: si él no puso nombre y compras sí
     // (P-MG-0016), salía sin nombre; y si compras lo cambió a retiro
     // (P-MG-0013), el mensaje seguía diciendo "entregar en la obra".
-    const prov = p.proveedor || {};
-    const comprado = !!prov.nombre;
-    const esRetiro = comprado ? !!prov.retira : entrega.tipo === "retira";
-    // "SIN ACLARACION", "-" o "?" son rellenos del campo obligatorio, no nombres.
-    const nombreUtil = (n) => {
-      const t = String(n || "").trim();
-      return /^(sin aclaraci[oó]n|sin nombre|a definir|-+|\?+|x+)$/i.test(t) ? "" : t;
-    };
-    const quienRetira = nombreUtil(comprado ? prov.retira : entrega.autorizado) ||
-      nombreUtil(entrega.autorizado);
-    if (esRetiro) {
+    const retiraNombre = quienRetira(p);
+    if (esRetiroPedido(p)) {
       // La obra va siempre, aunque se retire: el proveedor la necesita para
       // saber a qué obra cargarlo, y era la única rama que no la nombraba.
       lineas.push("Es para la obra " + p.obraNombre + ". " +
-        (quienRetira ? "Lo pasa a retirar " + quienRetira + "." : "Lo pasamos a retirar nosotros."));
+        (retiraNombre ? "Lo pasa a retirar " + retiraNombre + "." : "Lo pasamos a retirar nosotros."));
     } else {
       lineas.push("Entregar en la obra " + p.obraNombre +
         (obra && obra.direccion ? " — " + obra.direccion : "") + ".");
@@ -3249,6 +3340,7 @@ window.PO = window.PO || {};
       const cambios = {
         estado: nuevoEstado,
         items,
+        paraRetirar: null,        // lo fueron a buscar: la marca ya se usó
         historial: (p.historial || []).concat([{
           accion: "recepcion", usuarioNombre: u.nombre, ts: PO.fb.tsAhora(), nota
         }])
@@ -4074,6 +4166,8 @@ window.PO = window.PO || {};
     agregarFilaItem,
     abrirPegarLista,
     leerLoPegado,
+    marcarParaRetirar,
+    estadoVisible,
     puedeCorregir,
     puedeCorregirTodo,
     hayTrabajoEnCurso,

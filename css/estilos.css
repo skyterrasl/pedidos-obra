@@ -49,6 +49,9 @@
   --e-proveedor-bg: #DDE5EE; --e-proveedor-tx: #1B2A3B;
   --e-parcial-bg: #EDE4F2;   --e-parcial-tx: #5B3A72;
   --e-entregado-bg: #DCEEDD; --e-entregado-tx: #1F5E22;
+  /* Para retirar: verde lleno, para que no se confunda con el verde pálido de
+     "Entregado" — uno es "andá a buscarlo", el otro "ya está". */
+  --e-retirar-bg: #2E7D32;   --e-retirar-tx: #FFFFFF;
   --e-cancelado-bg: #E8E4DF; --e-cancelado-tx: #655F59;
 }
 
@@ -87,6 +90,7 @@
     --e-proveedor-bg: #1F3348; --e-proveedor-tx: #9BBBE4;
     --e-parcial-bg: #2F2740;   --e-parcial-tx: #C4ADEB;
     --e-entregado-bg: #1B3520; --e-entregado-tx: #86CF97;
+    --e-retirar-bg: #86CF97;   --e-retirar-tx: #0F2A16;
     --e-cancelado-bg: #262F38; --e-cancelado-tx: #99A3AD;
   }
 }
@@ -117,6 +121,7 @@
   --e-proveedor-bg: #1F3348; --e-proveedor-tx: #9BBBE4;
   --e-parcial-bg: #2F2740;   --e-parcial-tx: #C4ADEB;
   --e-entregado-bg: #1B3520; --e-entregado-tx: #86CF97;
+  --e-retirar-bg: #86CF97;   --e-retirar-tx: #0F2A16;
   --e-cancelado-bg: #262F38; --e-cancelado-tx: #99A3AD;
 }
 
@@ -694,7 +699,7 @@ select.input option { background: var(--bg-2); color: var(--text); }
    ya filtrado, asi el tablero no es solo decorativo. */
 .titulares {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   margin-bottom: 14px;
 }
@@ -704,27 +709,37 @@ select.input option { background: var(--bg-2); color: var(--text); }
   border-top: 3px solid var(--borde);
   border-radius: var(--radio);
   box-shadow: var(--sombra);
-  padding: 12px 8px;
+  padding: 12px 4px;
   cursor: pointer;
   font-family: inherit;
   text-align: center;
   min-height: 76px;
 }
 .titular .t-num { font-size: 28px; font-weight: 700; line-height: 1.05; color: var(--texto); }
+/* Con cuatro números en fila, la etiqueta se achica un punto para que
+   "ATRASADOS" entre entera. Las palabras no se parten: con overflow-wrap
+   anywhere quedaba "ATRASADO / S". */
 .titular .t-etiqueta {
-  font-size: 11.5px;
+  font-size: 10.5px;
   font-weight: 600;
   color: var(--texto-suave);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin-top: 2px;
-  overflow-wrap: anywhere;
+  letter-spacing: 0.2px;
+  line-height: 1.25;
+  margin-top: 3px;
+  overflow-wrap: normal;
+}
+/* En los celulares más angostos no entran cuatro: dos por fila. */
+@media (max-width: 359px) {
+  .titulares { grid-template-columns: 1fr 1fr; }
 }
 .titular.t-peligro { border-top-color: var(--peligro); }
 .titular.t-peligro .t-num { color: var(--peligro); }
 .titular.t-alerta { border-top-color: var(--alerta); }
 .titular.t-alerta .t-num { color: var(--alerta); }
 .titular.t-cero .t-num { color: var(--texto-suave); }
+.titular.t-verde { border-top-color: var(--e-retirar-bg); }
+.titular.t-verde .t-num { color: var(--ok); }
 
 .dash-grid {
   display: grid;
@@ -804,6 +819,13 @@ select.input option { background: var(--bg-2); color: var(--text); }
 .badge-pedido_proveedor { background: var(--e-proveedor-bg); color: var(--e-proveedor-tx); }
 .badge-entrega_parcial  { background: var(--e-parcial-bg);   color: var(--e-parcial-tx); }
 .badge-entregado        { background: var(--e-entregado-bg); color: var(--e-entregado-tx); }
+.badge-para_retirar     { background: var(--e-retirar-bg); color: var(--e-retirar-tx); }
+.btn-verde {
+  background: var(--e-retirar-bg);
+  color: var(--e-retirar-tx);
+  border: 1px solid var(--e-retirar-bg);
+  font-weight: 600;
+}
 .badge-cancelado        { background: var(--e-cancelado-bg); color: var(--e-cancelado-tx); }
 
 .pedido-obra { font-size: 14.5px; font-weight: 600; color: var(--acento-oscuro); }
