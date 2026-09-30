@@ -1,3 +1,5 @@
+> **CERRADA el 30-sep-2026** (Nico: «ya no vamos a usar Pedidos»). Los pedidos se hacen desde **Obra** (gestion.skyterra.com.ar/obra → Pedir material) y compras los atiende en el **SIC**. Los 55 pedidos pasaron al ERP con su número. Acá queda solo el cartel del cierre y un service worker que borra la app de los celulares que la tenían instalada. La app completa está en el tag `v73-ultima`.
+
 # Pedidos de Obra · Sky Terra
 
 PWA mobile-first para el seguimiento de pedidos de materiales de obra:

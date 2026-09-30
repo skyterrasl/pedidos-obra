@@ -18,7 +18,7 @@ AQUI="$(cd "$(dirname "$0")" && pwd)"
 echo "→ Empaquetando…"
 cd "$AQUI"
 tar czf /tmp/pedidos-obra.tgz \
-  index.html manifest.webmanifest service-worker.js css js assets
+  index.html manifest.webmanifest service-worker.js assets
 
 echo "→ Subiendo al VPS…"
 scp -q /tmp/pedidos-obra.tgz "$VPS:/tmp/"
